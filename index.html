@@ -185,67 +185,67 @@
                     const text = ret.data.text;
                     console.log("OCR Result:", text);
                     
-                    // --- Parsing Logic Updated for Red Box Focus ---
+                    // --- Parsing Logic Updated ---
                     let foundData = {};
                     let debugMsg = "";
 
-                    // 1. RATE (Format A/B e.g., 17.8/ 20)
-                    // Tìm kiếm pattern số thực / số thực hoặc số thực / số nguyên
-                    // Thường nằm gần chữ "Rate"
+                    // 1. RATE (Tìm A/B, ví dụ: 17.8/ 20)
                     const rateRegex = /Rate[\s\S]*?(\d+(\.\d+)?)\s*\/\s*(\d+(\.\d+)?)/i;
                     const rateMatch = text.match(rateRegex) || text.match(/(\d{1,2}(\.\d+)?)\s*\/\s*(\d{1,2}(\.\d+)?)/);
-                    
                     if (rateMatch) {
                         foundData.rate = parseFloat(rateMatch[1]);
-                        // Only set WorkDays if reasonable (e.g. > 15) to avoid false positives with dates
-                        const wd = parseFloat(rateMatch[3]); // Group 3 is the second number
+                        const wd = parseFloat(rateMatch[3]);
                         if (wd > 10) foundData.workDays = wd;
                         debugMsg += `- Công: ${foundData.rate} / ${foundData.workDays || '?'}\n`;
                     }
                     
-                    // 2. LATE TOTAL (min)
-                    // Tìm chữ "Late" hoặc "Late Total" và số đi kèm
-                    const lateRegex = /Late\s*(Total)?.*?(\d+(\.\d+)?)/i;
-                    const lateMatch = text.match(lateRegex);
-                    if (lateMatch) {
-                        foundData.lateMin = parseFloat(lateMatch[2]);
-                        debugMsg += `- Muộn: ${foundData.lateMin}p\n`;
+                    // 2. TÌM DÒNG "TOTAL" để trích xuất OT và LATE chính xác
+                    const lines = text.split('\n');
+                    let totalLine = "";
+                    for (const line of lines) {
+                        if (line.trim().startsWith("Total")) {
+                            totalLine = line;
+                            break;
+                        }
                     }
 
-                    // 3. OT HOURS
-                    // Cố gắng tìm các tiêu đề cột và giá trị bên dưới
-                    // 18h-22h
-                    const ot15Regex = /18h[\s-]?22h[\s\S]*?(\d+(\.\d+)?)/i;
-                    const ot15Match = text.match(ot15Regex);
-                    if (ot15Match) {
-                         const val = parseFloat(ot15Match[1]);
-                         // Filter out years like 2025
-                         if (val < 100) {
-                            foundData.otHours15 = val;
+                    if (totalLine) {
+                        console.log("Found Total Line:", totalLine);
+                        // Trích xuất tất cả các số từ dòng Total
+                        const numbersInTotal = totalLine.match(/(\d+(\.\d+)?)/g);
+                        
+                        if (numbersInTotal && numbersInTotal.length >= 5) {
+                            // Dựa trên cấu trúc ảnh: Rate, OT 1.5, OT 2.0, Day-Off, Late
+                            // Các số lần lượt là: 17.8, 15.5, 1.5, 21.9, 68.0
+                            // Lấy số thứ 2 (15.5) làm OT 1.5
+                            foundData.otHours15 = parseFloat(numbersInTotal[1]);
                             debugMsg += `- OT 1.5: ${foundData.otHours15}h\n`;
-                         }
-                    }
-
-                    // 22h-06h
-                    const ot20Regex = /22h[\s-]?06h[\s\S]*?(\d+(\.\d+)?)/i;
-                    const ot20Match = text.match(ot20Regex);
-                    if (ot20Match) {
-                        const val = parseFloat(ot20Match[1]);
-                        if (val < 100) {
-                            foundData.otHours20 = val;
+                            
+                            // Lấy số thứ 3 (1.5) làm OT Đêm
+                            foundData.otHours20 = parseFloat(numbersInTotal[2]);
                             debugMsg += `- OT Đêm: ${foundData.otHours20}h\n`;
-                        }
-                    }
-                    
-                    // Day-Off
-                    const otDayOffRegex = /Day[\s-]?Off[\s\S]*?(\d+(\.\d+)?)/i;
-                    const otDayOffMatch = text.match(otDayOffRegex);
-                    if (otDayOffMatch) {
-                        const val = parseFloat(otDayOffMatch[1]);
-                        if (val < 100) {
-                            foundData.otDayOff = val;
+
+                            // Lấy số thứ 4 (21.9) làm OT Nghỉ
+                            foundData.otDayOff = parseFloat(numbersInTotal[3]);
                             debugMsg += `- OT Nghỉ: ${foundData.otDayOff}h\n`;
+
+                            // Lấy số thứ 5 (68.0) làm Late
+                            foundData.lateMin = parseFloat(numbersInTotal[4]);
+                            debugMsg += `- Muộn: ${foundData.lateMin}p\n`;
                         }
+                    } else {
+                        // Fallback: Nếu không tìm thấy dòng Total, dùng phương pháp cũ
+                        const lateMatch = text.match(/Late\s*(Total)?.*?(\d+(\.\d+)?)/i);
+                        if (lateMatch) { foundData.lateMin = parseFloat(lateMatch[2]); debugMsg += `- Muộn (Fallback): ${foundData.lateMin}p\n`; }
+                        
+                        const ot15Match = text.match(/18h[\s-]?22h[\s\S]*?(\d+(\.\d+)?)/i);
+                        if (ot15Match) { foundData.otHours15 = parseFloat(ot15Match[1]); debugMsg += `- OT 1.5 (Fallback): ${foundData.otHours15}h\n`; }
+
+                        const ot20Match = text.match(/22h[\s-]?06h[\s\S]*?(\d+(\.\d+)?)/i);
+                        if (ot20Match) { foundData.otHours20 = parseFloat(ot20Match[1]); debugMsg += `- OT Đêm (Fallback): ${foundData.otHours20}h\n`; }
+                        
+                        const otDayOffMatch = text.match(/Day[\s-]?Off[\s\S]*?(\d+(\.\d+)?)/i);
+                        if (otDayOffMatch) { foundData.otDayOff = parseFloat(otDayOffMatch[1]); debugMsg += `- OT Nghỉ (Fallback): ${foundData.otDayOff}h\n`; }
                     }
 
                     if(Object.keys(foundData).length > 0) {
