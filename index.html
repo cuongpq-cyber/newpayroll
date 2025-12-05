@@ -42,27 +42,27 @@
             // Updated State based on Contract Logic
             const [data, setData] = useState({
                 // Contract Components
-                baseSalary: 26000000,   // Lương cứng
-                qualityBonus: 5400000,  // Thưởng chất lượng (Thường tính thuế)
-                lunchAllowance: 600000, // Ăn trưa (Miễn thuế nếu <730k)
+                baseSalary: 0,   // Lương cứng
+                qualityBonus: 0,  // Thưởng chất lượng (Thường tính thuế)
+                lunchAllowance: 0, // Ăn trưa (Miễn thuế nếu <730k)
                 
                 // Timekeeping
-                rate: 17.8,
-                workDays: 20,
-                hoursPerDay: 8,
+                rate: 0,
+                workDays: 0,
+                hoursPerDay: 0,
                 
                 // OT
-                otHours15: 15.5, // 18h-22h
-                otHours20: 23.4, // 22h-6h + DayOff
+                otHours15: 0, // 18h-22h
+                otHours20: 0, // 22h-6h + DayOff
                 
                 // Other
                 projBonus: 0,        // Thưởng dự án
                 lateMin: 68,         // Phút đi muộn
                 
                 // Regulations
-                insuranceBase: 5400000, // Mức lương đóng BHXH (Theo hợp đồng)
-                insuranceRate: 10.5,    // Tỷ lệ đóng (10.5%)
-                personalDeduction: 11000000
+                insuranceBase: 0, // Mức lương đóng BHXH (Theo hợp đồng)
+                insuranceRate: 0,    // Tỷ lệ đóng (10.5%)
+                personalDeduction: 0
             });
 
             const [results, setResults] = useState({});
@@ -85,7 +85,6 @@
 
                 // Hourly Rate for OT (Based on Base Salary usually)
                 const hourlyRate = data.baseSalary / (data.workDays * data.hoursPerDay); 
-
                 const otSalary15 = data.otHours15 * 1.5 * hourlyRate;
                 const otSalary20 = data.otHours20 * 2.0 * hourlyRate;
                 const totalOtSalary = otSalary15 + otSalary20;
@@ -152,19 +151,19 @@
             const loadStandardData = () => {
                 // Load data exactly from the contract image provided
                 setData({
-                    baseSalary: 26000000,
-                    qualityBonus: 5400000,
-                    lunchAllowance: 600000,
-                    rate: 17.8, // From previous timesheet
-                    workDays: 20,
+                    baseSalary: 0,
+                    qualityBonus: 0,
+                    lunchAllowance: 0,
+                    rate: 0, // From previous timesheet
+                    workDays: 0,
                     hoursPerDay: 8,
-                    otHours15: 15.5,
-                    otHours20: 23.4,
+                    otHours15: 0,
+                    otHours20: 0,
                     projBonus: 0,
-                    lateMin: 68,
-                    insuranceBase: 5400000,
-                    insuranceRate: 10.5,
-                    personalDeduction: 11000000
+                    lateMin: 0,
+                    insuranceBase: 0,
+                    insuranceRate: 0,
+                    personalDeduction: 0
                 });
             };
             
@@ -450,4 +449,5 @@
         root.render(<App />);
     </script>
 </body>
+
 </html>
