@@ -26,6 +26,15 @@
         .receipt-value { font-weight: 600; color: #111827; }
         .tag-tax-exempt { font-size: 0.7rem; background-color: #d1fae5; color: #065f46; padding: 2px 6px; border-radius: 4px; margin-left: 4px; }
         .tag-taxable { font-size: 0.7rem; background-color: #fee2e2; color: #991b1b; padding: 2px 6px; border-radius: 4px; margin-left: 4px; }
+        
+        /* Toggle Switch Styles */
+        .toggle-checkbox:checked {
+            right: 0;
+            border-color: #f97316;
+        }
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: #f97316;
+        }
     </style>
 </head>
 <body>
@@ -34,31 +43,27 @@
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
 
-        const INSURANCE_BASE = 5400000; // fix mức đóng BHXH
-        const INSURANCE_RATE_EMPLOYEE = 10.5; // NLĐ trích nộp 10.5%
-        const INSURANCE_RATE_COMPANY = 21.5; // Công ty đóng 21.5%
-
         const formatCurrency = (amount) => {
             if (isNaN(amount) || amount === null) return "0 ₫";
             return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
         };
 
         const App = () => {
-            // Updated State: Supports otDayOff and initialized with values to prevent 0 calculations
+            // Updated State: All contract-specific defaults are REMOVED (set to 0 or empty)
             const [data, setData] = useState({
-                baseSalary: 26000000,
-                qualityBonus: 5400000,
-                lunchAllowance: 600000,
-                rate: 17.8,
-                workDays: 20,
+                baseSalary: "",
+                qualityBonus: "",
+                lunchAllowance: "",
+                rate: "",
+                workDays: "",
                 hoursPerDay: 8,
-                otHours15: 15.5,
-                otHours20: 0,
-                otDayOff: 0, // Mới: OT Ngày nghỉ
-                projBonus: 0,
-                lateMin: 68,
-                insuranceBase: INSURANCE_BASE,
-                insuranceRate: INSURANCE_RATE_EMPLOYEE,
+                otHours15: "",
+                otHours20: "",
+                otDayOff: "",
+                projBonus: "",
+                lateMin: "",
+                insuranceBase: "", // Để trống, người dùng tự nhập
+                insuranceRate: 10.5,
                 personalDeduction: 11000000
             });
 
@@ -73,8 +78,13 @@
                 };
 
                 // 1. Calculate Earnings
+                // Rate logic: Lương thực tế = (Lương Gross / Công Chuẩn) * Công thực tế
                 const ratio = num(data.workDays) === 0 ? 0 : num(data.rate) / num(data.workDays);
 
+                // Đối với thử việc: thường nhận 85-90% lương Gross, nhưng người dùng có thể nhập trực tiếp lương thử việc vào ô Base Salary.
+                // Ở đây ta tính theo công thức chuẩn:
+                // Nếu thử việc = true -> Lương tính thuế = Tổng thu nhập (khấu trừ 10%)
+                
                 const actualBaseSalary = num(data.baseSalary) * ratio;
                 const actualQualityBonus = num(data.qualityBonus) * ratio;
                 const actualLunch = num(data.lunchAllowance) * ratio;
@@ -93,7 +103,10 @@
                 const latePenalty = num(data.lateMin) * 1000;
                 
                 // Insurance
-                const insuranceDeduction = num(data.insuranceBase) * (num(data.insuranceRate) / 100);
+                // Nếu thử việc -> Không đóng bảo hiểm (thường là vậy)
+                const currentInsuranceBase = trialMode ? 0 : num(data.insuranceBase);
+                const currentInsuranceRate = trialMode ? 0 : num(data.insuranceRate);
+                const insuranceDeduction = currentInsuranceBase * (currentInsuranceRate / 100);
 
                 // Income
                 const totalIncome = actualBaseSalary + actualQualityBonus + actualLunch + totalOtSalary + num(data.projBonus);
@@ -101,15 +114,21 @@
                 // Tax logic
                 let taxableIncome = totalIncome - actualLunch; 
                 let taxDeductions = num(data.personalDeduction) + insuranceDeduction;
-                let taxAssessmentIncome = taxableIncome - taxDeductions;
-                if (taxAssessmentIncome < 0) taxAssessmentIncome = 0;
-
+                
                 let tax = 0;
+                let taxAssessmentIncome = 0;
+
                 if (trialMode) {
-                     // Thuế thử việc 10% nếu tổng thu nhập >= 2 triệu
-                    tax = totalIncome >= 2000000 ? totalIncome * 0.10 : 0;
+                     // Thuế thử việc: Khấu trừ 10% tại nguồn nếu thu nhập từ 2 triệu trở lên
+                     // Lưu ý: Thử việc thường tính trên tổng thu nhập chi trả, không có giảm trừ gia cảnh
+                    if (totalIncome >= 2000000) {
+                        tax = totalIncome * 0.10;
+                    }
                 } else {
-                    // PIT Progressive
+                    // PIT Progressive (Chính thức)
+                    taxAssessmentIncome = taxableIncome - taxDeductions;
+                    if (taxAssessmentIncome < 0) taxAssessmentIncome = 0;
+
                     if (taxAssessmentIncome <= 5000000) tax = taxAssessmentIncome * 0.05;
                     else if (taxAssessmentIncome <= 10000000) tax = 250000 + (taxAssessmentIncome - 5000000) * 0.10;
                     else if (taxAssessmentIncome <= 18000000) tax = 750000 + (taxAssessmentIncome - 10000000) * 0.15;
@@ -146,34 +165,9 @@
                 }));
             };
 
-            const loadStandardData = () => {
-                setTrialMode(false);
-                // FIX: Load actual numbers instead of empty strings
-                setData({
-                    baseSalary: 26000000,
-                    qualityBonus: 5400000,
-                    lunchAllowance: 600000,
-                    rate: 17.8,
-                    workDays: 20,
-                    hoursPerDay: 8,
-                    otHours15: 15.5,
-                    otHours20: 1.5,
-                    otDayOff: 21.9,
-                    projBonus: 0,
-                    lateMin: 68,
-                    insuranceBase: INSURANCE_BASE,
-                    insuranceRate: INSURANCE_RATE_EMPLOYEE,
-                    personalDeduction: 11000000
-                });
-            };
-
-            const setTrial = () => {
-                setTrialMode(true);
-                setData(prev => ({
-                    ...prev,
-                    insuranceBase: 0,
-                    insuranceRate: 0
-                }));
+            // Toggle Handler
+            const toggleTrialMode = () => {
+                setTrialMode(!trialMode);
             };
             
              const handleImageUpload = async (e) => {
@@ -191,51 +185,74 @@
                     const text = ret.data.text;
                     console.log("OCR Result:", text);
                     
-                    // --- Parsing Logic ---
+                    // --- Parsing Logic Updated for Red Box Focus ---
                     let foundData = {};
                     let debugMsg = "";
 
-                    // Rate
-                    const rateMatch = text.match(/Rate\s*([\d.,]+)\s*\/\s*([\d.,]+)/i) || text.match(/(\d{1,2}[.,]?\d*)\s*\/\s*(\d{1,2}[.,]?\d*)/);
+                    // 1. RATE (Format A/B e.g., 17.8/ 20)
+                    // Tìm kiếm pattern số thực / số thực hoặc số thực / số nguyên
+                    // Thường nằm gần chữ "Rate"
+                    const rateRegex = /Rate[\s\S]*?(\d+(\.\d+)?)\s*\/\s*(\d+(\.\d+)?)/i;
+                    const rateMatch = text.match(rateRegex) || text.match(/(\d{1,2}(\.\d+)?)\s*\/\s*(\d{1,2}(\.\d+)?)/);
+                    
                     if (rateMatch) {
-                        foundData.rate = parseFloat(rateMatch[1].replace(",", "."));
-                        // Only set WorkDays if reasonable (e.g. > 15) to avoid false positives
-                        const wd = parseFloat(rateMatch[2].replace(",", "."));
-                        if (wd > 15) foundData.workDays = wd;
-                        debugMsg += `- Công: ${foundData.rate}/${foundData.workDays || '?'}\n`;
+                        foundData.rate = parseFloat(rateMatch[1]);
+                        // Only set WorkDays if reasonable (e.g. > 15) to avoid false positives with dates
+                        const wd = parseFloat(rateMatch[3]); // Group 3 is the second number
+                        if (wd > 10) foundData.workDays = wd;
+                        debugMsg += `- Công: ${foundData.rate} / ${foundData.workDays || '?'}\n`;
                     }
                     
-                    // Late
-                    const lateMatch = text.match(/Late\s*(Total)?.*?(\d+)/i);
+                    // 2. LATE TOTAL (min)
+                    // Tìm chữ "Late" hoặc "Late Total" và số đi kèm
+                    const lateRegex = /Late\s*(Total)?.*?(\d+(\.\d+)?)/i;
+                    const lateMatch = text.match(lateRegex);
                     if (lateMatch) {
-                        foundData.lateMin = parseInt(lateMatch[2]);
+                        foundData.lateMin = parseFloat(lateMatch[2]);
                         debugMsg += `- Muộn: ${foundData.lateMin}p\n`;
                     }
 
-                    // OT Parsing
-                    const ot15Match = text.match(/18h[\s-]?22h\s*([0-9]+(\.[0-9]+)?)/i);
+                    // 3. OT HOURS
+                    // Cố gắng tìm các tiêu đề cột và giá trị bên dưới
+                    // 18h-22h
+                    const ot15Regex = /18h[\s-]?22h[\s\S]*?(\d+(\.\d+)?)/i;
+                    const ot15Match = text.match(ot15Regex);
                     if (ot15Match) {
-                         foundData.otHours15 = parseFloat(ot15Match[1]);
-                         debugMsg += `- OT 1.5: ${foundData.otHours15}h\n`;
+                         const val = parseFloat(ot15Match[1]);
+                         // Filter out years like 2025
+                         if (val < 100) {
+                            foundData.otHours15 = val;
+                            debugMsg += `- OT 1.5: ${foundData.otHours15}h\n`;
+                         }
                     }
 
-                    const ot20Match = text.match(/22h[\s-]?06h\s*([0-9]+(\.[0-9]+)?)/i);
+                    // 22h-06h
+                    const ot20Regex = /22h[\s-]?06h[\s\S]*?(\d+(\.\d+)?)/i;
+                    const ot20Match = text.match(ot20Regex);
                     if (ot20Match) {
-                        foundData.otHours20 = parseFloat(ot20Match[1]);
-                        debugMsg += `- OT Đêm: ${foundData.otHours20}h\n`;
+                        const val = parseFloat(ot20Match[1]);
+                        if (val < 100) {
+                            foundData.otHours20 = val;
+                            debugMsg += `- OT Đêm: ${foundData.otHours20}h\n`;
+                        }
                     }
                     
-                    const otDayOffMatch = text.match(/Day[\s-]?Off\s*([0-9]+(\.[0-9]+)?)/i);
+                    // Day-Off
+                    const otDayOffRegex = /Day[\s-]?Off[\s\S]*?(\d+(\.\d+)?)/i;
+                    const otDayOffMatch = text.match(otDayOffRegex);
                     if (otDayOffMatch) {
-                        foundData.otDayOff = parseFloat(otDayOffMatch[1]);
-                        debugMsg += `- OT Nghỉ: ${foundData.otDayOff}h\n`;
+                        const val = parseFloat(otDayOffMatch[1]);
+                        if (val < 100) {
+                            foundData.otDayOff = val;
+                            debugMsg += `- OT Nghỉ: ${foundData.otDayOff}h\n`;
+                        }
                     }
 
                     if(Object.keys(foundData).length > 0) {
                         setData(prev => ({...prev, ...foundData}));
-                        alert(`✅ Đã quét thành công!\n\n${debugMsg}`);
+                        alert(`✅ Đã quét thành công dữ liệu chấm công!\n\n${debugMsg}`);
                     } else {
-                         alert(`⚠️ Không tìm thấy từ khóa chính xác.\n\nVăn bản đọc được: "${text.substring(0, 100)}..."`);
+                         alert(`⚠️ Không tìm thấy dữ liệu rõ ràng.\n\nVăn bản đọc được: "${text.substring(0, 100)}..."`);
                     }
                     
                     await worker.terminate();
@@ -247,19 +264,37 @@
             };
 
             return (
-                <div className="min-h-screen p-4 md:p-8 max-w-6xl mx-auto">
-                    <header className="mb-6 text-center md:text-left flex flex-col md:flex-row justify-between items-center">
+                <div className="min-h-screen p-4 md:p-8 max-w-6xl mx-auto font-sans">
+                    <header className="mb-6 text-center md:text-left flex flex-col md:flex-row justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-gray-100">
                         <div>
-                            <h1 className="text-3xl font-bold text-blue-900 flex items-center gap-2">
-                                <i data-lucide="file-check" className="w-8 h-8"></i>
+                            <h1 className="text-3xl font-bold text-blue-900 flex items-center gap-2 justify-center md:justify-start">
+                                <i data-lucide="file-check" className="w-8 h-8 text-blue-600"></i>
                                 Tính Lương NET
                             </h1>
-                            <p className="text-emerald-600 font-medium mt-1">
-                                ✓ Form Magenest: BHXH đóng mức 5.4M. Thưởng KPI & Ăn trưa.
+                            <p className="text-gray-500 text-sm mt-1">
+                                Nhập số liệu từ hợp đồng và bảng công để tính toán
                             </p>
                         </div>
                         
-                        <div className="flex gap-2 mt-4 md:mt-0">
+                        <div className="flex flex-col md:flex-row gap-4 mt-4 md:mt-0 items-center">
+                            
+                            {/* Toggle Switch */}
+                            <div className="flex items-center justify-center w-full md:w-auto">
+                                <span className={`mr-2 text-sm font-bold ${!trialMode ? 'text-blue-600' : 'text-gray-400'}`}>Chính thức</span>
+                                <div className="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in">
+                                    <input 
+                                        type="checkbox" 
+                                        name="toggle" 
+                                        id="toggle" 
+                                        checked={trialMode}
+                                        onChange={toggleTrialMode}
+                                        className="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer transition-all duration-300 left-0 border-gray-300"
+                                    />
+                                    <label htmlFor="toggle" className={`toggle-label block overflow-hidden h-6 rounded-full cursor-pointer transition-colors duration-300 ${trialMode ? 'bg-orange-400' : 'bg-blue-200'}`}></label>
+                                </div>
+                                <span className={`text-sm font-bold ${trialMode ? 'text-orange-500' : 'text-gray-400'}`}>Thử việc</span>
+                            </div>
+
                             <div className="relative">
                                 <input 
                                     type="file" 
@@ -271,25 +306,21 @@
                                 <button 
                                     onClick={() => fileInputRef.current.click()}
                                     disabled={isScanning}
-                                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg shadow-md font-medium transition flex items-center gap-2 disabled:opacity-50"
+                                    className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-6 py-2.5 rounded-full shadow-md font-medium transition-all transform hover:scale-105 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
-                                    {isScanning ? 'Đang đọc...' : 'Scan Ảnh Mới'}
+                                    {isScanning ? (
+                                        <span className="flex items-center gap-2">
+                                            <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                            Đang đọc ảnh...
+                                        </span>
+                                    ) : (
+                                        <span className="flex items-center gap-2">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"></rect><circle cx="9" cy="9" r="2"></circle><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"></path></svg>
+                                            Scan Bảng Công
+                                        </span>
+                                    )}
                                 </button>
                             </div>
-
-                            <button 
-                                onClick={loadStandardData}
-                                className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-lg shadow-md font-medium transition flex items-center gap-2"
-                            >
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" x2="12" y1="3" y2="15"></line></svg>
-                                Reset Chuẩn
-                            </button>
-                             <button 
-                                onClick={setTrial}
-                                className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2.5 rounded-lg shadow-md font-medium transition flex items-center gap-2"
-                            >
-                                Thử Việc
-                            </button>
                         </div>
                     </header>
 
@@ -298,62 +329,82 @@
                         <div className="lg:col-span-7 bg-white p-6 rounded-xl shadow-sm border border-gray-200">
                             
                             {/* Contract Setup */}
-                            <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-100 mb-6">
-                                <h3 className="text-sm font-bold text-indigo-800 uppercase tracking-wide mb-3 flex items-center gap-2">
+                            <div className={`p-4 rounded-lg border mb-6 transition-colors duration-300 ${trialMode ? 'bg-orange-50 border-orange-100' : 'bg-indigo-50 border-indigo-100'}`}>
+                                <h3 className={`text-sm font-bold uppercase tracking-wide mb-3 flex items-center gap-2 ${trialMode ? 'text-orange-800' : 'text-indigo-800'}`}>
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" x2="23" y1="8" y2="11"></line><line x1="23" x2="20" y1="8" y2="11"></line><line x1="16" x2="16" y1="13" y2="21"></line></svg>
-                                    Cấu phần Lương (Theo Hợp Đồng)
+                                    Thông tin Hợp Đồng {trialMode && "(Thử việc)"}
                                 </h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div className="input-group">
-                                        <label>Lương cứng (26M) <span className="tag-taxable">Chịu thuế</span></label>
-                                        <input type="number" name="baseSalary" value={data.baseSalary} onChange={handleInputChange} className="font-semibold text-indigo-900" />
+                                        <label>Lương cứng (Gross) <span className="tag-taxable">Chịu thuế</span></label>
+                                        <input type="number" name="baseSalary" value={data.baseSalary} onChange={handleInputChange} className={`font-semibold ${trialMode ? 'text-orange-900' : 'text-indigo-900'}`} placeholder="Nhập lương..." />
                                     </div>
                                     <div className="input-group">
-                                        <label>Thưởng chất lượng (5.4M) <span className="tag-taxable">Chịu thuế</span></label>
-                                        <input type="number" name="qualityBonus" value={data.qualityBonus} onChange={handleInputChange} />
+                                        <label>Thưởng KPI/Chất lượng <span className="tag-taxable">Chịu thuế</span></label>
+                                        <input type="number" name="qualityBonus" value={data.qualityBonus} onChange={handleInputChange} placeholder="0" />
                                     </div>
                                     <div className="input-group">
-                                        <label>Hỗ trợ ăn trưa (600k) <span className="tag-tax-exempt">Miễn thuế</span></label>
-                                        <input type="number" name="lunchAllowance" value={data.lunchAllowance} onChange={handleInputChange} />
+                                        <label>Hỗ trợ ăn trưa <span className="tag-tax-exempt">Miễn thuế</span></label>
+                                        <input type="number" name="lunchAllowance" value={data.lunchAllowance} onChange={handleInputChange} placeholder="0" />
                                     </div>
                                      <div className="input-group">
-                                        <label>Lương đóng BHXH (Fix 5.4M)</label>
-                                        <input type="number" name="insuranceBase" value={data.insuranceBase} onChange={handleInputChange} className="text-gray-500 bg-gray-100" disabled={trialMode}/>
+                                        <label>Lương đóng BHXH {trialMode && <span className="text-red-500">(Thường = 0)</span>}</label>
+                                        <input 
+                                            type="number" 
+                                            name="insuranceBase" 
+                                            value={data.insuranceBase} 
+                                            onChange={handleInputChange} 
+                                            className={`${trialMode ? 'bg-gray-100 text-gray-400' : ''}`} 
+                                            placeholder={trialMode ? "Không đóng" : "Nhập mức đóng..."} 
+                                            disabled={trialMode}
+                                        />
                                     </div>
                                 </div>
-                                {trialMode && <div className="mt-2 text-xs text-orange-600 font-bold bg-orange-100 p-1 rounded inline-block">Đang chế độ thử việc</div>}
+                                {trialMode && <div className="mt-2 text-xs text-orange-600 font-bold bg-orange-100 p-2 rounded flex items-start gap-1">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mt-0.5"><circle cx="12" cy="12" r="10"></circle><line x1="12" x2="12" y1="8" y2="12"></line><line x1="12" x2="12.01" y1="16" y2="16"></line></svg>
+                                    Lưu ý: Thuế thử việc khấu trừ 10% toàn bộ thu nhập (nếu {'>'}= 2 triệu). Không áp dụng biểu thuế lũy tiến và giảm trừ gia cảnh.
+                                </div>}
                             </div>
 
                             {/* Timekeeping Data */}
-                            <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wide mb-3">Dữ liệu chấm công Tháng 11</h3>
+                            <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wide mb-3 flex items-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"></rect><line x1="16" x2="16" y1="2" y2="6"></line><line x1="8" x2="8" y1="2" y2="6"></line><line x1="3" x2="21" y1="10" y2="10"></line></svg>
+                                Dữ liệu chấm công
+                            </h3>
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                                <div className="input-group">
-                                    <label>Ngày công thực (Rate)</label>
-                                    <input type="number" name="rate" value={data.rate} onChange={handleInputChange} className="border-emerald-200 focus:border-emerald-500" />
+                                <div className="input-group relative">
+                                    <label>Công thực (A)</label>
+                                    <input type="number" name="rate" value={data.rate} onChange={handleInputChange} className="border-emerald-200 focus:border-emerald-500 pr-8" placeholder="0" />
+                                    <span className="absolute right-3 top-8 text-gray-400 text-xs font-bold">ngày</span>
                                 </div>
-                                <div className="input-group">
-                                    <label>Công chuẩn (Ngày)</label>
-                                    <input type="number" name="workDays" value={data.workDays} onChange={handleInputChange} />
+                                <div className="input-group relative">
+                                    <label>Công chuẩn (B)</label>
+                                    <input type="number" name="workDays" value={data.workDays} onChange={handleInputChange} className="pr-8" placeholder="0" />
+                                    <span className="absolute right-3 top-8 text-gray-400 text-xs font-bold">ngày</span>
                                 </div>
-                                <div className="input-group">
-                                    <label className="text-red-600">Phút đi muộn</label>
-                                    <input type="number" name="lateMin" value={data.lateMin} onChange={handleInputChange} className="text-red-600" />
+                                <div className="input-group relative">
+                                    <label className="text-red-600">Đi muộn</label>
+                                    <input type="number" name="lateMin" value={data.lateMin} onChange={handleInputChange} className="text-red-600 border-red-200 focus:border-red-500 pr-8" placeholder="0" />
+                                    <span className="absolute right-3 top-8 text-red-300 text-xs font-bold">phút</span>
                                 </div>
                             </div>
 
-                            <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wide mb-3 text-orange-600">OT & Thưởng khác</h3>
+                            <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wide mb-3 text-orange-600 flex items-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                                OT & Thưởng khác
+                            </h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-orange-50 p-4 rounded-lg border border-orange-100 mb-6">
                                 <div className="input-group">
                                     <label>OT 18h-22h (x1.5)</label>
-                                    <input type="number" name="otHours15" value={data.otHours15} onChange={handleInputChange} />
+                                    <input type="number" name="otHours15" value={data.otHours15} onChange={handleInputChange} placeholder="0" />
                                 </div>
                                 <div className="input-group">
                                     <label>OT Đêm 22h-6h (x2.0)</label>
-                                    <input type="number" name="otHours20" value={data.otHours20} onChange={handleInputChange} />
+                                    <input type="number" name="otHours20" value={data.otHours20} onChange={handleInputChange} placeholder="0" />
                                 </div>
                                 <div className="input-group">
                                     <label>OT Ngày Nghỉ (x2.0)</label>
-                                    <input type="number" name="otDayOff" value={data.otDayOff} onChange={handleInputChange} />
+                                    <input type="number" name="otDayOff" value={data.otDayOff} onChange={handleInputChange} placeholder="0" />
                                 </div>
                                 <div className="input-group">
                                     <label>Thưởng Dự án (Nếu có)</label>
@@ -366,16 +417,20 @@
                         <div className="lg:col-span-5">
                             <div className="bg-white p-6 rounded-xl shadow-lg border border-indigo-100 sticky top-4">
                                 <div className="text-center mb-6">
-                                    <h2 className="text-xl font-bold text-gray-800">PHIẾU LƯƠNG CHI TIẾT</h2>
-                                    <p className="text-xs text-gray-400">Tháng 11/2025</p>
+                                    <h2 className="text-xl font-bold text-gray-800">PHIẾU LƯƠNG</h2>
+                                    <p className="text-xs text-gray-400">Tạm tính</p>
                                 </div>
 
                                 <div className="space-y-1 text-sm">
                                     {/* Income Group */}
                                     <div className="mb-4">
-                                        <p className="text-xs font-bold text-gray-400 uppercase mb-2">1. Thu Nhập (Theo Rate {data.rate}/{data.workDays})</p>
+                                        <p className="text-xs font-bold text-gray-400 uppercase mb-2 border-b pb-1">1. Thu Nhập</p>
                                         <div className="receipt-row">
-                                            <span className="receipt-label">Lương cứng</span>
+                                            <span className="receipt-label">Tỷ lệ công ({data.rate || 0}/{data.workDays || 0})</span>
+                                            <span className="receipt-value text-gray-500">{(parseFloat(data.workDays) ? ((parseFloat(data.rate)/parseFloat(data.workDays))*100).toFixed(0) : 0)}%</span>
+                                        </div>
+                                        <div className="receipt-row">
+                                            <span className="receipt-label">Lương cứng (thực tế)</span>
                                             <span className="receipt-value">{formatCurrency(results.actualBaseSalary)}</span>
                                         </div>
                                         <div className="receipt-row">
@@ -393,18 +448,18 @@
                                                 <span className="text-xs font-bold text-orange-800">Tổng Lương OT</span>
                                                 <span className="font-bold text-orange-600">{formatCurrency(results.totalOtSalary)}</span>
                                             </div>
-                                            <div className="flex justify-between text-xs text-gray-500 mb-1">
-                                                <span>• x1.5 ({data.otHours15}h):</span>
+                                            {(data.otHours15 > 0) && <div className="flex justify-between text-xs text-gray-500 mb-1">
+                                                <span>• x1.5 ({data.otHours15}h)</span>
                                                 <span>{formatCurrency(results.otSalary15)}</span>
-                                            </div>
-                                            <div className="flex justify-between text-xs text-gray-500 mb-1">
-                                                <span>• x2.0 Đêm ({data.otHours20}h):</span>
+                                            </div>}
+                                            {(data.otHours20 > 0) && <div className="flex justify-between text-xs text-gray-500 mb-1">
+                                                <span>• x2.0 Đêm ({data.otHours20}h)</span>
                                                 <span>{formatCurrency(results.otSalary20)}</span>
-                                            </div>
-                                            <div className="flex justify-between text-xs text-gray-500">
-                                                <span>• x2.0 Nghỉ ({data.otDayOff}h):</span>
+                                            </div>}
+                                            {(data.otDayOff > 0) && <div className="flex justify-between text-xs text-gray-500">
+                                                <span>• x2.0 Nghỉ ({data.otDayOff}h)</span>
                                                 <span>{formatCurrency(results.otSalaryDayOff)}</span>
-                                            </div>
+                                            </div>}
                                         </div>
 
                                         {parseFloat(data.projBonus) > 0 && <div className="receipt-row">
@@ -415,23 +470,25 @@
                                     
                                     {/* Tax Calc */}
                                     <div className="mb-4 bg-gray-50 p-3 rounded border border-gray-200">
-                                        <p className="text-xs font-bold text-gray-400 uppercase mb-2">2. Tính Thuế TNCN</p>
+                                        <p className="text-xs font-bold text-gray-400 uppercase mb-2">2. Tính Thuế TNCN {trialMode && "(10%)"}</p>
                                         <div className="flex justify-between text-xs mb-1">
                                             <span>Thu nhập chịu thuế:</span>
                                             <span className="font-semibold">{formatCurrency(results.taxableIncome)}</span>
                                         </div>
-                                        <div className="flex justify-between text-xs mb-1 text-gray-500">
-                                            <span>(Đã trừ ăn trưa: {formatCurrency(results.actualLunch)})</span>
-                                        </div>
-                                        <div className="flex justify-between text-xs mb-1 text-red-500">
-                                            <span>- Giảm trừ (BH+Bản thân):</span>
-                                            <span>{formatCurrency(results.taxDeductions)}</span>
-                                        </div>
-                                        <div className="border-t border-gray-300 my-1"></div>
-                                        <div className="flex justify-between font-bold text-gray-800">
-                                            <span>Thu nhập tính thuế:</span>
-                                            <span>{formatCurrency(results.taxAssessmentIncome)}</span>
-                                        </div>
+                                        {!trialMode && <>
+                                            <div className="flex justify-between text-xs mb-1 text-gray-500">
+                                                <span>(Đã trừ ăn trưa: {formatCurrency(results.actualLunch)})</span>
+                                            </div>
+                                            <div className="flex justify-between text-xs mb-1 text-red-500">
+                                                <span>- Giảm trừ (BH+Bản thân):</span>
+                                                <span>{formatCurrency(results.taxDeductions)}</span>
+                                            </div>
+                                            <div className="border-t border-gray-300 my-1"></div>
+                                            <div className="flex justify-between font-bold text-gray-800">
+                                                <span>Thu nhập tính thuế:</span>
+                                                <span>{formatCurrency(results.taxAssessmentIncome)}</span>
+                                            </div>
+                                        </>}
                                         <div className="flex justify-between text-red-600 font-bold mt-1">
                                             <span>Thuế phải đóng:</span>
                                             <span>{formatCurrency(results.tax)}</span>
@@ -440,9 +497,9 @@
 
                                     {/* Deductions & Final */}
                                     <div className="mb-4">
-                                        <p className="text-xs font-bold text-gray-400 uppercase mb-2">3. Các khoản trừ</p>
+                                        <p className="text-xs font-bold text-gray-400 uppercase mb-2 border-b pb-1">3. Khấu trừ</p>
                                         <div className="receipt-row">
-                                            <span className="receipt-label">BHXH ({trialMode ? "0%" : "10.5%"})</span>
+                                            <span className="receipt-label">BHXH ({trialMode ? "0" : "10.5"}%)</span>
                                             <span className="receipt-value text-red-500">-{formatCurrency(results.insuranceDeduction)}</span>
                                         </div>
                                         <div className="receipt-row">
