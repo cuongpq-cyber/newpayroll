@@ -34,6 +34,10 @@
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
 
+        const INSURANCE_BASE = 5400000; // fix mức đóng BHXH
+        const INSURANCE_RATE_EMPLOYEE = 10.5; // NLĐ trích nộp 10.5%
+        const INSURANCE_RATE_COMPANY = 21.5; // Công ty đóng 21.5%
+
         const formatCurrency = (amount) => {
             if (isNaN(amount) || amount === null) return "0 ₫";
             return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
@@ -50,19 +54,20 @@
                 hoursPerDay: "",
                 otHours15: "",
                 otHours20: "",
+                otDayOff: "", // mới: riêng cho Day-Off
                 projBonus: "",
                 lateMin: "",
-                insuranceBase: "",
-                insuranceRate: "",
+                insuranceBase: INSURANCE_BASE.toString(),
+                insuranceRate: INSURANCE_RATE_EMPLOYEE.toString(),
                 personalDeduction: ""
             });
 
             const [results, setResults] = useState({});
             const [isScanning, setIsScanning] = useState(false);
+            const [trialMode, setTrialMode] = useState(false);
             const fileInputRef = useRef(null);
 
             useEffect(() => {
-                // Safely parse numbers, fall back to 0 if empty or invalid
                 const num = (v) => {
                     const n = parseFloat(v); return (!v || isNaN(n)) ? 0 : n;
                 };
@@ -74,31 +79,42 @@
                 const actualQualityBonus = num(data.qualityBonus) * ratio;
                 const actualLunch = num(data.lunchAllowance) * ratio;
 
-                // Hourly Rate for OT (Based on Base Salary usually)
+                // OT chính xác: OT 18-22h (x1.5), OT 22-06h (x2.0), OT Day-Off (x2.0)
                 const hourlyRate = (num(data.baseSalary) && num(data.workDays) && num(data.hoursPerDay))
                     ? num(data.baseSalary) / (num(data.workDays) * num(data.hoursPerDay)) : 0;
                 const otSalary15 = num(data.otHours15) * 1.5 * hourlyRate;
                 const otSalary20 = num(data.otHours20) * 2.0 * hourlyRate;
-                const totalOtSalary = otSalary15 + otSalary20;
+                const otSalaryDayOff = num(data.otDayOff) * 2.0 * hourlyRate;
+                const totalOtSalary = otSalary15 + otSalary20 + otSalaryDayOff;
 
                 // Deductions
                 const latePenalty = num(data.lateMin) * 1000;
+
+                // Insurance: always use fixed
                 const insuranceDeduction = num(data.insuranceBase) * (num(data.insuranceRate) / 100);
 
-                // Taxable income calculation
+                // Income
                 const totalIncome = actualBaseSalary + actualQualityBonus + actualLunch + totalOtSalary + num(data.projBonus);
-                const taxableIncome = totalIncome - actualLunch;
-                const taxDeductions = num(data.personalDeduction) + insuranceDeduction;
+
+                // Tax logic
+                let taxableIncome = totalIncome - actualLunch;
+                let taxDeductions = num(data.personalDeduction) + insuranceDeduction;
                 let taxAssessmentIncome = taxableIncome - taxDeductions;
                 if (taxAssessmentIncome < 0) taxAssessmentIncome = 0;
 
-                // PIT calculation (same as old)
+                // Thuế: nếu thử việc --> khấu trừ 10% trên tổng lương nếu >= 2tr, ngược lại tính PIT bình thường
                 let tax = 0;
-                if (taxAssessmentIncome <= 5000000) tax = taxAssessmentIncome * 0.05;
-                else if (taxAssessmentIncome <= 10000000) tax = 250000 + (taxAssessmentIncome - 5000000) * 0.10;
-                else if (taxAssessmentIncome <= 18000000) tax = 750000 + (taxAssessmentIncome - 10000000) * 0.15;
-                else if (taxAssessmentIncome <= 32000000) tax = 1950000 + (taxAssessmentIncome - 18000000) * 0.20;
-                else tax = 4750000 + (taxAssessmentIncome - 32000000) * 0.25;
+                if (trialMode) {
+                    // Thuế thử việc 10% cá nhân cư, nếu tổng lương > 2 triệu
+                    tax = totalIncome >= 2000000 ? totalIncome * 0.10 : 0;
+                } else {
+                    // PIT lũy tiến chuẩn
+                    if (taxAssessmentIncome <= 5000000) tax = taxAssessmentIncome * 0.05;
+                    else if (taxAssessmentIncome <= 10000000) tax = 250000 + (taxAssessmentIncome - 5000000) * 0.10;
+                    else if (taxAssessmentIncome <= 18000000) tax = 750000 + (taxAssessmentIncome - 10000000) * 0.15;
+                    else if (taxAssessmentIncome <= 32000000) tax = 1950000 + (taxAssessmentIncome - 18000000) * 0.20;
+                    else tax = 4750000 + (taxAssessmentIncome - 32000000) * 0.25;
+                }
 
                 const netIncome = totalIncome - insuranceDeduction - latePenalty - tax;
 
@@ -109,6 +125,7 @@
                     actualLunch,
                     otSalary15,
                     otSalary20,
+                    otSalaryDayOff,
                     totalOtSalary,
                     insuranceDeduction,
                     taxableIncome,
@@ -118,7 +135,7 @@
                     latePenalty,
                     netIncome
                 });
-            }, [data]);
+            }, [data, trialMode]);
 
             const handleInputChange = (e) => {
                 const { name, value } = e.target;
@@ -129,7 +146,7 @@
             };
 
             const loadStandardData = () => {
-                // Reset: all to "" except hoursPerDay default 8
+                setTrialMode(false);
                 setData({
                     baseSalary: "",
                     qualityBonus: "",
@@ -139,19 +156,30 @@
                     hoursPerDay: "8",
                     otHours15: "",
                     otHours20: "",
+                    otDayOff: "",
                     projBonus: "",
                     lateMin: "",
-                    insuranceBase: "",
-                    insuranceRate: "",
+                    insuranceBase: INSURANCE_BASE.toString(),
+                    insuranceRate: INSURANCE_RATE_EMPLOYEE.toString(),
                     personalDeduction: ""
                 });
             };
 
+            // Toggle trial mode (thử việc)
+            const setTrial = () => {
+                setTrialMode(true);
+                setData(prev => ({
+                    ...prev,
+                    insuranceBase: "0",
+                    insuranceRate: "0"
+                }));
+            };
+
             /**
-             * Smart OCR for Magenest's timekeeping screenshot (image #1)
+             * OCR: Parse values from Magenest timekeeping image
              *
-             * - Reads expected field values: rate, workDays, lateMin, otHours15, otHours20, etc.
-             * - Focus: robustly extract numbers on the provided image type.
+             * - Rate: dạng A/B (A: ngày công thực tế, B: ngày công trong tháng)
+             * - OT 18h-22h: hệ số 1.5, OT 22h-06h: hệ số 2.0, Day-Off: hệ số 2.0
              */
             const handleImageUpload = async (e) => {
                 const file = e.target.files[0];
@@ -168,75 +196,90 @@
                     const text = ret.data.text;
                     console.log("OCR Result:", text);
 
-                    // --- SMART LOGIC TO READ YOUR TIMEKEEPING IMAGE #1 ---
-                    // For robustness, each field will be searched with several fallback patterns
-
-                    // Rate (example: "14.6/ 23")
+                    // --- Smart parsing for OCR with fallback for A/B rate and OT ---
+                    // Parse Rate: tìm chuỗi A/B (A: ngày công thực tế, B: ngày công trong tháng)
                     let rate = "";
                     let workDays = "";
-                    const rateRegex = /Rate\s*([0-9.,]+)\s*\/\s*([0-9.,]+)/i;
-                    const rateMatch = text.match(rateRegex);
+                    const rateRegex = /Rate\s*([\d.,]+)\s*\/\s*([\d.,]+)/i;
+                    let rateMatch = text.match(rateRegex);
+                    if (!rateMatch) {
+                        // Fallback: tìm theo mẫu "(\d+[.,]?\d*)\s*\/\s*(\d+[.,]?\d*)"
+                        rateMatch = text.match(/(\d{1,2}[.,]?\d*)\s*\/\s*(\d{1,2}[.,]?\d*)/);
+                    }
                     if (rateMatch) {
-                        rate = rateMatch[1].replace(",", "."); // take left value
+                        rate = rateMatch[1].replace(",", ".");
                         workDays = rateMatch[2].replace(",", ".");
-                    } else {
-                        // Fallback pattern
-                        const rateFallback = text.match(/([0-9]+(\.[0-9]+)?)\s*\/\s*([0-9]+(\.[0-9]+)?)/);
-                        if (rateFallback) {
-                            rate = rateFallback[1];
-                            workDays = rateFallback[3];
-                        }
                     }
 
-                    // Late minutes (e.g. "Late Total(min): 169.0")
+                    // LateMin "Late Total(min)" hoặc "Late": lấy số sau từ khóa
                     let lateMin = "";
-                    const lateMinRegex = /Late\s*Total.*?([0-9]+(\.[0-9]+)?)/i;
-                    const lateMinMatch = text.match(lateMinRegex);
-                    if (lateMinMatch) {
-                        lateMin = lateMinMatch[1];
-                    } else {
-                        // Fallback (search by line keyword)
-                        const lateLine = text.split("\n").find(l => l.toLowerCase().includes("late"));
+                    let lateRegex = /Late\s*Total.*?([\d.]+)/i;
+                    let lateMatch = text.match(lateRegex);
+                    if (!lateMatch) {
+                        const lateLine = text.split("\n").find(t => t.toLowerCase().includes("late"));
                         if (lateLine) {
                             const v = lateLine.match(/([0-9]+(\.[0-9]+)?)/);
                             if (v) lateMin = v[1];
                         }
+                    } else {
+                        lateMin = lateMatch[1];
                     }
 
-                    // OT 18h-22h (x1.5) 
+                    // OT 18h-22h (x1.5), 22h-06h (x2.0), Day-Off (x2.0): lấy giá trị từng cột đúng hệ số
                     let otHours15 = "";
-                    const otRegex = /18h[\s-]?22h\s*([0-9]+(\.[0-9]+)?)/i;
-                    const ot15Match = text.match(otRegex);
-                    if (ot15Match) {
-                        otHours15 = ot15Match[1];
-                    } else {
-                        // Less robust fallback: grab after "18h-22h"
+                    let otHours20 = "";
+                    let otDayOff = "";
+
+                    // Theo dòng/cột đúng mẫu
+                    // Ví dụ bảng: "OT(hours) 18h-22h 4.0", "22h-06h 0", "Day-Off 6.0"
+                    let ot15Match = text.match(/18h[\s-]?22h\s*([0-9]+(\.[0-9]+)?)/i);
+                    if (!ot15Match) {
+                        // Fallback theo dòng, lấy giá trị sau "18h-22h"
                         const i = text.indexOf("18h-22h");
                         if (i > -1) {
-                            const substr = text.substring(i, i+20); // right after
+                            const substr = text.substring(i, i+20);
                             const v = substr.match(/([0-9]+(\.[0-9]+)?)/);
                             if (v) otHours15 = v[1];
                         }
+                    } else {
+                        otHours15 = ot15Match[1];
                     }
 
-                    // OT 22h-06h (x2.0) and Day-Off
-                    let otHours20 = "";
-                    const ot22hMatch = text.match(/22h[\s-]?06h\s*([0-9]+(\.[0-9]+)?)/i);
-                    let otDayOffMatch = text.match(/Day[\s-]?Off\s*([0-9]+(\.[0-9]+)?)/i);
-                    let ot20Sum = 0;
-                    if (ot22hMatch) ot20Sum += parseFloat(ot22hMatch[1]);
-                    if (otDayOffMatch) ot20Sum += parseFloat(otDayOffMatch[1]);
-                    if (ot20Sum) otHours20 = ot20Sum.toString();
+                    let ot20Match = text.match(/22h[\s-]?06h\s*([0-9]+(\.[0-9]+)?)/i);
+                    if (!ot20Match) {
+                        // Fallback theo dòng, lấy giá trị sau "22h-06h"
+                        const i = text.indexOf("22h-06h");
+                        if (i > -1) {
+                            const substr = text.substring(i, i+20);
+                            const v = substr.match(/([0-9]+(\.[0-9]+)?)/);
+                            if (v) otHours20 = v[1];
+                        }
+                    } else {
+                        otHours20 = ot20Match[1];
+                    }
 
-                    // Fill parsed data
+                    let otDayOffMatch = text.match(/Day[\s-]?Off\s*([0-9]+(\.[0-9]+)?)/i);
+                    if (!otDayOffMatch) {
+                        // Fallback "Day-Off"
+                        const i = text.indexOf("Day-Off");
+                        if (i > -1) {
+                            const substr = text.substring(i, i+20);
+                            const v = substr.match(/([0-9]+(\.[0-9]+)?)/);
+                            if (v) otDayOff = v[1];
+                        }
+                    } else {
+                        otDayOff = otDayOffMatch[1];
+                    }
+
                     let foundData = {};
                     let debugMsg = "";
 
-                    if (rate) { foundData.rate = rate; debugMsg += `- Rate: ${rate}\n`; }
-                    if (workDays) { foundData.workDays = workDays; debugMsg += `- WorkDays: ${workDays}\n`; }
-                    if (lateMin) { foundData.lateMin = lateMin; debugMsg += `- LateMin: ${lateMin}\n`; }
-                    if (otHours15) { foundData.otHours15 = otHours15; debugMsg += `- OT 18-22h: ${otHours15}\n`; }
-                    if (otHours20) { foundData.otHours20 = otHours20; debugMsg += `- OT 22h-06h + DayOff: ${otHours20}\n`; }
+                    if (rate) { foundData.rate = rate; debugMsg += `- Số công thực tế: ${rate}\n`; }
+                    if (workDays) { foundData.workDays = workDays; debugMsg += `- Số công chuẩn: ${workDays}\n`; }
+                    if (lateMin) { foundData.lateMin = lateMin; debugMsg += `- Phút đi muộn: ${lateMin}\n`; }
+                    if (otHours15) { foundData.otHours15 = otHours15; debugMsg += `- OT 18-22h (1.5x): ${otHours15}\n`; }
+                    if (otHours20) { foundData.otHours20 = otHours20; debugMsg += `- OT 22-06h (2.0x): ${otHours20}\n`; }
+                    if (otDayOff) { foundData.otDayOff = otDayOff; debugMsg += `- OT Day-Off (2.0x): ${otDayOff}\n`; }
 
                     if (Object.keys(foundData).length > 0) {
                         setData(prev => ({ ...prev, ...foundData }));
@@ -261,7 +304,10 @@
                                 <i data-lucide="file-check" className="w-8 h-8"></i>
                                 Tính Lương NET
                             </h1>
-                            <p className="text-emerald-600 font-medium mt-1">✓ Đã cấu hình theo Hợp đồng Magenest</p>
+                            <p className="text-emerald-600 font-medium mt-1">
+                                ✓ BHXH: Công ty đóng khi HĐLĐ chính thức. NLĐ: 10.5% x 5.400.000đ. Công ty: 21.5% x 5.400.000đ.<br/>
+                                ✓ Thử việc: khấu trừ 10% cá nhân cư nếu thu nhập từ 2tr đồng trở lên.
+                            </p>
                         </div>
                         <div className="flex gap-2 mt-4 md:mt-0">
                             <div className="relative">
@@ -285,7 +331,13 @@
                                 onClick={loadStandardData}
                                 className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-lg shadow-md font-medium transition flex items-center gap-2"
                             >
-                                Reset Chuẩn
+                                Reset Chính Thức
+                            </button>
+                            <button 
+                                onClick={setTrial}
+                                className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2.5 rounded-lg shadow-md font-medium transition flex items-center gap-2"
+                            >
+                                Chế Độ Thử Việc
                             </button>
                         </div>
                     </header>
@@ -312,21 +364,22 @@
                                         <input type="number" name="lunchAllowance" value={data.lunchAllowance} onChange={handleInputChange} placeholder="0"/>
                                     </div>
                                     <div className="input-group">
-                                        <label>Lương đóng BHXH (Fix)</label>
-                                        <input type="number" name="insuranceBase" value={data.insuranceBase} onChange={handleInputChange} className="text-gray-500 bg-gray-100" placeholder="0"/>
+                                        <label>Lương đóng BHXH (Fix <span style={{color:"#047857"}}>NLĐ: {INSURANCE_RATE_EMPLOYEE}%/ Công ty: {INSURANCE_RATE_COMPANY}%</span>)</label>
+                                        <input type="number" name="insuranceBase" value={data.insuranceBase} onChange={handleInputChange} className="text-gray-500 bg-gray-100" placeholder="5.400.000" disabled={trialMode}/>
                                     </div>
                                 </div>
+                                {trialMode && <div className="mt-3 text-orange-700 text-sm font-bold">ĐANG CHẾ ĐỘ THỬ VIỆC: KHẤU TRỪ 10% TỔNG THU NHẬP</div>}
                             </div>
 
                             {/* Timekeeping Data */}
                             <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wide mb-3">Dữ liệu chấm công</h3>
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                                 <div className="input-group">
-                                    <label>Ngày công thực (Rate)</label>
+                                    <label>Ngày công thực (A)</label>
                                     <input type="number" name="rate" value={data.rate} onChange={handleInputChange} className="border-emerald-200 focus:border-emerald-500" placeholder="0"/>
                                 </div>
                                 <div className="input-group">
-                                    <label>Công chuẩn (Ngày)</label>
+                                    <label>Công chuẩn (B)</label>
                                     <input type="number" name="workDays" value={data.workDays} onChange={handleInputChange} placeholder="0"/>
                                 </div>
                                 <div className="input-group">
@@ -342,8 +395,12 @@
                                     <input type="number" name="otHours15" value={data.otHours15} onChange={handleInputChange} placeholder="0"/>
                                 </div>
                                 <div className="input-group">
-                                    <label>OT Đêm/Cuối tuần (x2.0)</label>
+                                    <label>OT 22h-06h (x2.0)</label>
                                     <input type="number" name="otHours20" value={data.otHours20} onChange={handleInputChange} placeholder="0"/>
+                                </div>
+                                <div className="input-group md:col-span-2 mt-2">
+                                    <label>OT Day-Off (x2.0)</label>
+                                    <input type="number" name="otDayOff" value={data.otDayOff} onChange={handleInputChange} placeholder="0"/>
                                 </div>
                                 <div className="input-group md:col-span-2 mt-2">
                                     <label>Thưởng Dự án (Nếu có)</label>
@@ -359,7 +416,7 @@
                                 </div>
                                 <div className="input-group">
                                     <label>Tỷ lệ đóng BHXH (%)</label>
-                                    <input type="number" name="insuranceRate" value={data.insuranceRate} onChange={handleInputChange} placeholder="0"/>
+                                    <input type="number" name="insuranceRate" value={data.insuranceRate} onChange={handleInputChange} placeholder="10.5" disabled={trialMode}/>
                                 </div>
                                 <div className="input-group md:col-span-2">
                                     <label>Giảm trừ bản thân</label>
@@ -412,10 +469,10 @@
                                         <div className="flex justify-between text-xs mb-1 text-gray-500">
                                             <span>(Đã trừ ăn trưa: {formatCurrency(results.actualLunch)})</span>
                                         </div>
-                                        <div className="flex justify-between text-xs mb-1 text-red-500">
+                                        {!trialMode && <div className="flex justify-between text-xs mb-1 text-red-500">
                                             <span>- Giảm trừ (BH+Bản thân):</span>
                                             <span>{formatCurrency(results.taxDeductions)}</span>
-                                        </div>
+                                        </div>}
                                         <div className="border-t border-gray-300 my-1"></div>
                                         <div className="flex justify-between font-bold text-gray-800">
                                             <span>Thu nhập tính thuế:</span>
@@ -425,13 +482,14 @@
                                             <span>Thuế phải đóng:</span>
                                             <span>{formatCurrency(results.tax)}</span>
                                         </div>
+                                        {trialMode && <div className="text-xs text-orange-600 text-center mt-1">Thử việc: khấu trừ 10% nếu thu nhập &ge; 2 triệu</div>}
                                     </div>
 
                                     {/* Deductions & Final */}
                                     <div className="mb-4">
                                         <p className="text-xs font-bold text-gray-400 uppercase mb-2">3. Các khoản trừ</p>
                                         <div className="receipt-row">
-                                            <span className="receipt-label">BHXH (Tỷ lệ: {data.insuranceRate}% x {formatCurrency(data.insuranceBase)})</span>
+                                            <span className="receipt-label">BHXH (Tỷ lệ: {trialMode ? "0%" : data.insuranceRate+"%"} x {formatCurrency(data.insuranceBase)})</span>
                                             <span className="receipt-value text-red-500">-{formatCurrency(results.insuranceDeduction)}</span>
                                         </div>
                                         <div className="receipt-row">
@@ -462,5 +520,4 @@
         root.render(<App />);
     </script>
 </body>
-
 </html>
