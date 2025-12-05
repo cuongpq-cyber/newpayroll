@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tính Lương NET (Form Magenest)</title>
+    <!-- React & ReactDOM -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <!-- Babel -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Tesseract.js for OCR -->
+    <script src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f3f4f6; }
+        .input-group label { font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 0.25rem; display: block; }
+        .input-group input { width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem; font-size: 0.95rem; transition: border-color 0.2s; }
+        .input-group input:focus { outline: none; border-color: #2563eb; ring: 2px solid #2563eb; }
+        .receipt-row { display: flex; justify-content: space-between; padding-top: 0.5rem; padding-bottom: 0.5rem; border-bottom: 1px dashed #e5e7eb; }
+        .receipt-row:last-child { border-bottom: none; }
+        .receipt-label { color: #6b7280; font-size: 0.9rem; }
+        .receipt-value { font-weight: 600; color: #111827; }
+        .tag-tax-exempt { font-size: 0.7rem; background-color: #d1fae5; color: #065f46; padding: 2px 6px; border-radius: 4px; margin-left: 4px; }
+        .tag-taxable { font-size: 0.7rem; background-color: #fee2e2; color: #991b1b; padding: 2px 6px; border-radius: 4px; margin-left: 4px; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        const formatCurrency = (amount) => {
+            return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
+        };
+
+        const App = () => {
+            // Updated State based on Contract Logic
+            const [data, setData] = useState({
+                // Contract Components
+                baseSalary: 26000000,   // Lương cứng
+                qualityBonus: 5400000,  // Thưởng chất lượng (Thường tính thuế)
+                lunchAllowance: 600000, // Ăn trưa (Miễn thuế nếu <730k)
+                
+                // Timekeeping
+                rate: 17.8,
+                workDays: 20,
+                hoursPerDay: 8,
+                
+                // OT
+                otHours15: 15.5, // 18h-22h
+                otHours20: 23.4, // 22h-6h + DayOff
+                
+                // Other
+                projBonus: 0,        // Thưởng dự án
+                lateMin: 68,         // Phút đi muộn
+                
+                // Regulations
+                insuranceBase: 5400000, // Mức lương đóng BHXH (Theo hợp đồng)
+                insuranceRate: 10.5,    // Tỷ lệ đóng (10.5%)
+                personalDeduction: 11000000
+            });
+
+            const [results, setResults] = useState({});
+            const [isScanning, setIsScanning] = useState(false);
+            const fileInputRef = useRef(null);
+
+            useEffect(() => {
+                // 1. Calculate Earnings
+                // Lương theo ngày công: Dựa trên tổng lương hay chỉ lương cứng? 
+                // Thông thường: Lương cứng * (Ngày làm/Công chuẩn) + Phụ cấp.
+                // Ở đây giả định Rate áp dụng cho cả Lương cứng. Thưởng chất lượng thường fix hoặc tính theo KPI riêng.
+                // Để an toàn, ta tính Lương Cứng theo Rate. Thưởng chất lượng và ăn trưa nhận đủ (hoặc theo quy chế công ty).
+                // *Update logic*: Nếu chấm công 17.8/20 thì lương cứng sẽ bị trừ. Các phụ cấp thường cũng bị prorate theo ngày công thực tế.
+                
+                const ratio = data.rate / data.workDays; // Tỷ lệ hưởng lương
+                
+                const actualBaseSalary = data.baseSalary * ratio;
+                const actualQualityBonus = data.qualityBonus * ratio; // Giả định KPI/Thưởng cũng theo ngày công
+                const actualLunch = data.lunchAllowance * ratio;      // Ăn trưa tính theo ngày đi làm thực tế
+
+                // Hourly Rate for OT (Based on Base Salary usually)
+                const hourlyRate = data.baseSalary / (data.workDays * data.hoursPerDay); 
+
+                const otSalary15 = data.otHours15 * 1.5 * hourlyRate;
+                const otSalary20 = data.otHours20 * 2.0 * hourlyRate;
+                const totalOtSalary = otSalary15 + otSalary20;
+
+                // 2. Calculate Deductions
+                const latePenalty = data.lateMin * 1000;
+                
+                // Insurance: Based on fixed base 5,400,000 as per contract
+                const insuranceDeduction = data.insuranceBase * (data.insuranceRate / 100);
+
+                // 3. Calculate Tax
+                // Taxable Income = (Base + Quality + OT + Project) - (Non-taxable: Lunch, Phone...)
+                // Lunch is Exempt (Miễn thuế)
+                const totalIncome = actualBaseSalary + actualQualityBonus + actualLunch + totalOtSalary + data.projBonus;
+                
+                // Thu nhập chịu thuế (Loại bỏ ăn trưa)
+                const taxableIncome = totalIncome - actualLunch; 
+
+                // Các khoản giảm trừ thuế
+                const taxDeductions = data.personalDeduction + insuranceDeduction; 
+
+                // Thu nhập tính thuế
+                let taxAssessmentIncome = taxableIncome - taxDeductions;
+                if (taxAssessmentIncome < 0) taxAssessmentIncome = 0;
+
+                // Tính thuế lũy tiến từng phần (Simplified for standard ranges)
+                // 0-5tr: 5%; 5-10tr: 10%; 10-18tr: 15%; 18-32tr: 20%...
+                let tax = 0;
+                if (taxAssessmentIncome <= 5000000) tax = taxAssessmentIncome * 0.05;
+                else if (taxAssessmentIncome <= 10000000) tax = 250000 + (taxAssessmentIncome - 5000000) * 0.10;
+                else if (taxAssessmentIncome <= 18000000) tax = 750000 + (taxAssessmentIncome - 10000000) * 0.15;
+                else if (taxAssessmentIncome <= 32000000) tax = 1950000 + (taxAssessmentIncome - 18000000) * 0.20;
+                else tax = 4750000 + (taxAssessmentIncome - 32000000) * 0.25; // Cao hơn nữa tính sau
+
+                // 4. NET INCOME
+                const netIncome = totalIncome - insuranceDeduction - latePenalty - tax;
+
+                setResults({
+                    hourlyRate,
+                    actualBaseSalary,
+                    actualQualityBonus,
+                    actualLunch,
+                    otSalary15,
+                    otSalary20,
+                    totalOtSalary,
+                    insuranceDeduction,
+                    taxableIncome,
+                    taxAssessmentIncome,
+                    taxDeductions,
+                    tax,
+                    latePenalty,
+                    netIncome
+                });
+            }, [data]);
+
+            const handleInputChange = (e) => {
+                const { name, value } = e.target;
+                setData(prev => ({
+                    ...prev,
+                    [name]: parseFloat(value) || 0
+                }));
+            };
+
+            const loadStandardData = () => {
+                // Load data exactly from the contract image provided
+                setData({
+                    baseSalary: 26000000,
+                    qualityBonus: 5400000,
+                    lunchAllowance: 600000,
+                    rate: 17.8, // From previous timesheet
+                    workDays: 20,
+                    hoursPerDay: 8,
+                    otHours15: 15.5,
+                    otHours20: 23.4,
+                    projBonus: 0,
+                    lateMin: 68,
+                    insuranceBase: 5400000,
+                    insuranceRate: 10.5,
+                    personalDeduction: 11000000
+                });
+            };
+            
+             const handleImageUpload = async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                setIsScanning(true);
+                
+                try {
+                    // Thêm logger để theo dõi tiến trình
+                    const worker = await Tesseract.createWorker('eng', 1, {
+                        logger: m => console.log(m)
+                    });
+                    
+                    const ret = await worker.recognize(file);
+                    const text = ret.data.text;
+                    console.log("OCR Result:", text); // Log toàn bộ text để debug
+                    
+                    // --- LOGIC NHẬN DIỆN MỚI (LINH HOẠT HƠN) ---
+                    
+                    // 1. Tìm Rate: Tìm chữ "Rate" rồi lấy số thập phân gần nhất sau đó
+                    // Regex: Rate [ký tự bất kỳ] [Số thập phân]
+                    const rateMatch = text.match(/Rate\s*.*?(\d+(\.\d+)?)/i);
+                    
+                    // 2. Tìm Phút đi muộn: Tìm "Late Total" hoặc "Late" rồi lấy số nguyên
+                    const lateMatch = text.match(/Late\s*(Total)?.*?(\d+)/i);
+                    
+                    // 3. Tìm OT: Logic phức tạp hơn vì bảng biểu có thể bị xô lệch
+                    // Cách tiếp cận: Tìm tiêu đề cột (VD: 18h-22h) và lấy số xuất hiện ngay sau đó (thường là dữ liệu của cột đó)
+                    
+                    // OT 18h-22h (x1.5)
+                    const ot15Match = text.match(/18h-22h\s*.*?(\d+(\.\d+)?)/i);
+                    
+                    // OT 22h-06h (x2.0 part 1)
+                    const ot20NightMatch = text.match(/22h-06h\s*.*?(\d+(\.\d+)?)/i);
+                    
+                    // OT Day-Off (x2.0 part 2)
+                    const otDayOffMatch = text.match(/Day-Off\s*.*?(\d+(\.\d+)?)/i);
+
+                    
+                    let foundData = {};
+                    let debugMsg = "";
+
+                    if (rateMatch && rateMatch[1]) {
+                        // Mẹo: Rate trong bảng thường ghi là 17.8/ 20 -> lấy số đầu tiên
+                        // Nếu OCR đọc nhầm dấu / thành số 1 hoặc 7, cần cẩn thận. Ở đây lấy số float đầu tiên tìm thấy.
+                        foundData.rate = parseFloat(rateMatch[1]);
+                        debugMsg += `- Rate: ${foundData.rate}\n`;
+                    }
+                    
+                    if (lateMatch && lateMatch[2]) {
+                        foundData.lateMin = parseInt(lateMatch[2]); // lateMatch[2] vì group 1 là (Total)?
+                        debugMsg += `- Muộn: ${foundData.lateMin}p\n`;
+                    }
+
+                    if (ot15Match && ot15Match[1]) {
+                        foundData.otHours15 = parseFloat(ot15Match[1]);
+                        debugMsg += `- OT 18-22h: ${foundData.otHours15}h\n`;
+                    }
+
+                    // Tính tổng OT x2.0
+                    let ot20 = 0;
+                    if (ot20NightMatch && ot20NightMatch[1]) ot20 += parseFloat(ot20NightMatch[1]);
+                    if (otDayOffMatch && otDayOffMatch[1]) ot20 += parseFloat(otDayOffMatch[1]);
+                    
+                    if (ot20 > 0) {
+                        foundData.otHours20 = parseFloat(ot20.toFixed(1)); // Làm tròn 1 số lẻ
+                        debugMsg += `- OT Khác (Đêm/Nghỉ): ${foundData.otHours20}h\n`;
+                    }
+
+                    if(Object.keys(foundData).length > 0) {
+                        setData(prev => ({...prev, ...foundData}));
+                        alert(`✅ Đã quét thành công!\n\n${debugMsg}`);
+                    } else {
+                        // Fallback: Nếu không tìm thấy bằng từ khóa, thử tìm các số lớn bất thường (đôi khi OCR mất chữ)
+                        alert(`⚠️ Không tìm thấy từ khóa chính xác (Rate, OT...).\n\nVăn bản đọc được: "${text.substring(0, 100)}..."\n\nBạn vui lòng nhập tay nhé!`);
+                    }
+                    
+                    await worker.terminate();
+                } catch (err) {
+                    console.error(err);
+                    alert("❌ Lỗi khi đọc ảnh: " + err.message);
+                }
+                setIsScanning(false);
+            };
+
+            return (
+                <div className="min-h-screen p-4 md:p-8 max-w-6xl mx-auto">
+                    <header className="mb-6 text-center md:text-left flex flex-col md:flex-row justify-between items-center">
+                        <div>
+                            <h1 className="text-3xl font-bold text-blue-900 flex items-center gap-2">
+                                <i data-lucide="file-check" className="w-8 h-8"></i>
+                                Tính Lương NET
+                            </h1>
+                            <p className="text-emerald-600 font-medium mt-1">✓ Đã cấu hình theo Hợp đồng Magenest</p>
+                        </div>
+                        
+                        <div className="flex gap-2 mt-4 md:mt-0">
+                            <div className="relative">
+                                <input 
+                                    type="file" 
+                                    ref={fileInputRef}
+                                    onChange={handleImageUpload}
+                                    accept="image/*"
+                                    className="hidden"
+                                />
+                                <button 
+                                    onClick={() => fileInputRef.current.click()}
+                                    disabled={isScanning}
+                                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg shadow-md font-medium transition flex items-center gap-2 disabled:opacity-50"
+                                >
+                                    {isScanning ? 'Đang đọc...' : 'Scan Ảnh Mới'}
+                                    {!isScanning && <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"></rect><circle cx="9" cy="9" r="2"></circle><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"></path></svg>}
+                                </button>
+                            </div>
+
+                            <button 
+                                onClick={loadStandardData}
+                                className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-lg shadow-md font-medium transition flex items-center gap-2"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" x2="12" y1="3" y2="15"></line></svg>
+                                Reset Chuẩn
+                            </button>
+                        </div>
+                    </header>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                        {/* INPUT SECTION */}
+                        <div className="lg:col-span-7 bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                            
+                            {/* Contract Setup */}
+                            <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-100 mb-6">
+                                <h3 className="text-sm font-bold text-indigo-800 uppercase tracking-wide mb-3 flex items-center gap-2">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" x2="23" y1="8" y2="11"></line><line x1="23" x2="20" y1="8" y2="11"></line><line x1="16" x2="16" y1="13" y2="21"></line></svg>
+                                    Cấu phần Lương (Theo Hợp Đồng)
+                                </h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="input-group">
+                                        <label>Lương cứng (26M) <span className="tag-taxable">Chịu thuế</span></label>
+                                        <input type="number" name="baseSalary" value={data.baseSalary} onChange={handleInputChange} className="font-semibold text-indigo-900" />
+                                    </div>
+                                    <div className="input-group">
+                                        <label>Thưởng chất lượng (5.4M) <span className="tag-taxable">Chịu thuế</span></label>
+                                        <input type="number" name="qualityBonus" value={data.qualityBonus} onChange={handleInputChange} />
+                                    </div>
+                                    <div className="input-group">
+                                        <label>Hỗ trợ ăn trưa (600k) <span className="tag-tax-exempt">Miễn thuế</span></label>
+                                        <input type="number" name="lunchAllowance" value={data.lunchAllowance} onChange={handleInputChange} />
+                                    </div>
+                                     <div className="input-group">
+                                        <label>Lương đóng BHXH (Fix)</label>
+                                        <input type="number" name="insuranceBase" value={data.insuranceBase} onChange={handleInputChange} className="text-gray-500 bg-gray-100" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Timekeeping Data */}
+                            <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wide mb-3">Dữ liệu chấm công Tháng 11</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                                <div className="input-group">
+                                    <label>Ngày công thực (Rate)</label>
+                                    <input type="number" name="rate" value={data.rate} onChange={handleInputChange} className="border-emerald-200 focus:border-emerald-500" />
+                                </div>
+                                <div className="input-group">
+                                    <label>Công chuẩn (Ngày)</label>
+                                    <input type="number" name="workDays" value={data.workDays} onChange={handleInputChange} />
+                                </div>
+                                <div className="input-group">
+                                    <label className="text-red-600">Phút đi muộn</label>
+                                    <input type="number" name="lateMin" value={data.lateMin} onChange={handleInputChange} className="text-red-600" />
+                                </div>
+                            </div>
+
+                            <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wide mb-3 text-orange-600">OT & Thưởng khác</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-orange-50 p-4 rounded-lg border border-orange-100 mb-6">
+                                <div className="input-group">
+                                    <label>OT 18h-22h (x1.5)</label>
+                                    <input type="number" name="otHours15" value={data.otHours15} onChange={handleInputChange} />
+                                </div>
+                                <div className="input-group">
+                                    <label>OT Đêm/Cuối tuần (x2.0)</label>
+                                    <input type="number" name="otHours20" value={data.otHours20} onChange={handleInputChange} />
+                                </div>
+                                <div className="input-group md:col-span-2 mt-2">
+                                    <label>Thưởng Dự án (Nếu có)</label>
+                                    <input type="number" name="projBonus" value={data.projBonus} onChange={handleInputChange} placeholder="0" />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* RESULT SECTION */}
+                        <div className="lg:col-span-5">
+                            <div className="bg-white p-6 rounded-xl shadow-lg border border-indigo-100 sticky top-4">
+                                <div className="text-center mb-6">
+                                    <h2 className="text-xl font-bold text-gray-800">PHIẾU LƯƠNG CHI TIẾT</h2>
+                                    <p className="text-xs text-gray-400">Tháng 11/2025</p>
+                                </div>
+
+                                <div className="space-y-1 text-sm">
+                                    {/* Income Group */}
+                                    <div className="mb-4">
+                                        <p className="text-xs font-bold text-gray-400 uppercase mb-2">1. Thu Nhập (Theo Rate {data.rate}/{data.workDays})</p>
+                                        <div className="receipt-row">
+                                            <span className="receipt-label">Lương cứng</span>
+                                            <span className="receipt-value">{formatCurrency(results.actualBaseSalary)}</span>
+                                        </div>
+                                        <div className="receipt-row">
+                                            <span className="receipt-label">Thưởng chất lượng</span>
+                                            <span className="receipt-value">{formatCurrency(results.actualQualityBonus)}</span>
+                                        </div>
+                                        <div className="receipt-row">
+                                            <span className="receipt-label">Phụ cấp ăn trưa</span>
+                                            <span className="receipt-value text-green-600">{formatCurrency(results.actualLunch)}</span>
+                                        </div>
+                                        <div className="receipt-row">
+                                            <span className="receipt-label">Lương OT (Tổng)</span>
+                                            <span className="receipt-value text-blue-600">{formatCurrency(results.totalOtSalary)}</span>
+                                        </div>
+                                        {data.projBonus > 0 && <div className="receipt-row">
+                                            <span className="receipt-label">Thưởng dự án</span>
+                                            <span className="receipt-value text-blue-600">{formatCurrency(data.projBonus)}</span>
+                                        </div>}
+                                    </div>
+                                    
+                                    {/* Tax Calc */}
+                                    <div className="mb-4 bg-gray-50 p-3 rounded border border-gray-200">
+                                        <p className="text-xs font-bold text-gray-400 uppercase mb-2">2. Tính Thuế TNCN</p>
+                                        <div className="flex justify-between text-xs mb-1">
+                                            <span>Thu nhập chịu thuế:</span>
+                                            <span className="font-semibold">{formatCurrency(results.taxableIncome)}</span>
+                                        </div>
+                                        <div className="flex justify-between text-xs mb-1 text-gray-500">
+                                            <span>(Đã trừ ăn trưa: {formatCurrency(results.actualLunch)})</span>
+                                        </div>
+                                        <div className="flex justify-between text-xs mb-1 text-red-500">
+                                            <span>- Giảm trừ (BH+Bản thân):</span>
+                                            <span>{formatCurrency(results.taxDeductions)}</span>
+                                        </div>
+                                        <div className="border-t border-gray-300 my-1"></div>
+                                        <div className="flex justify-between font-bold text-gray-800">
+                                            <span>Thu nhập tính thuế:</span>
+                                            <span>{formatCurrency(results.taxAssessmentIncome)}</span>
+                                        </div>
+                                        <div className="flex justify-between text-red-600 font-bold mt-1">
+                                            <span>Thuế phải đóng:</span>
+                                            <span>{formatCurrency(results.tax)}</span>
+                                        </div>
+                                    </div>
+
+                                    {/* Deductions & Final */}
+                                    <div className="mb-4">
+                                        <p className="text-xs font-bold text-gray-400 uppercase mb-2">3. Các khoản trừ</p>
+                                        <div className="receipt-row">
+                                            <span className="receipt-label">BHXH (10.5% x {formatCurrency(data.insuranceBase)})</span>
+                                            <span className="receipt-value text-red-500">-{formatCurrency(results.insuranceDeduction)}</span>
+                                        </div>
+                                        <div className="receipt-row">
+                                            <span className="receipt-label">Phạt đi muộn ({data.lateMin}p)</span>
+                                            <span className="receipt-value text-red-500">-{formatCurrency(results.latePenalty)}</span>
+                                        </div>
+                                        <div className="receipt-row">
+                                            <span className="receipt-label">Thuế TNCN</span>
+                                            <span className="receipt-value text-red-500">-{formatCurrency(results.tax)}</span>
+                                        </div>
+                                    </div>
+
+                                    <div className="mt-6 pt-4 border-t-2 border-dashed border-gray-300">
+                                        <div className="flex justify-between items-end">
+                                            <span className="text-gray-500 font-bold text-sm uppercase">THỰC NHẬN (NET)</span>
+                                            <span className="text-3xl font-bold text-indigo-700">{formatCurrency(results.netIncome)}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
