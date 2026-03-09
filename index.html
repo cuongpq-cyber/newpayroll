@@ -1,533 +1,868 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tính Lương NET (Form Magenest)</title>
-    <!-- React & ReactDOM -->
-    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-    <!-- Babel -->
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Lucide Icons -->
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <!-- Tesseract.js for OCR -->
-    <script src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'></script>
-    <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f3f4f6; }
-        .input-group label { font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 0.25rem; display: block; }
-        .input-group input { width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem; font-size: 0.95rem; transition: border-color 0.2s; }
-        .input-group input:focus { outline: none; border-color: #2563eb; ring: 2px solid #2563eb; }
-        .receipt-row { display: flex; justify-content: space-between; padding-top: 0.5rem; padding-bottom: 0.5rem; border-bottom: 1px dashed #e5e7eb; }
-        .receipt-row:last-child { border-bottom: none; }
-        .receipt-label { color: #6b7280; font-size: 0.9rem; }
-        .receipt-value { font-weight: 600; color: #111827; }
-        .tag-tax-exempt { font-size: 0.7rem; background-color: #d1fae5; color: #065f46; padding: 2px 6px; border-radius: 4px; margin-left: 4px; }
-        .tag-taxable { font-size: 0.7rem; background-color: #fee2e2; color: #991b1b; padding: 2px 6px; border-radius: 4px; margin-left: 4px; }
-        
-        /* Toggle Switch Styles */
-        .toggle-checkbox:checked {
-            right: 0;
-            border-color: #f97316;
-        }
-        .toggle-checkbox:checked + .toggle-label {
-            background-color: #f97316;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CHC — Designer's Own Concept</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Outfit:wght@200;300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+
+:root{
+  /* Brand palette */
+  --ink:      #04100A;
+  --deep:     #071510;
+  --surface:  #0D1F15;
+  --card:     #111E17;
+  --border:   rgba(255,255,255,0.06);
+  --moss:     #1A5C36;
+  --forest:   #0F7A40;
+  --emerald:  #00974D;
+  --jade:     #00B87A;
+  --teal:     #00D4A8;
+  --gold:     #C8A84B;
+  --goldlit:  #E8C96A;
+  --text:     #DCE8DF;
+  --muted:    #527A60;
+  --dim:      #253D2C;
+}
+
+body{
+  background:var(--ink);
+  color:var(--text);
+  font-family:'Outfit',sans-serif;
+  overflow-x:hidden;
+}
+
+/* ── GRAIN ── */
+body::before{
+  content:'';position:fixed;inset:0;
+  opacity:.025;pointer-events:none;z-index:1000;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ══════════════════════════════════════════
+   01 — COVER
+══════════════════════════════════════════ */
+.cover{
+  min-height:100vh;
+  display:grid;
+  grid-template-rows:auto 1fr auto;
+  padding:48px 64px;
+  border-bottom:1px solid var(--border);
+  position:relative;overflow:hidden;
+}
+
+/* Radial ambient */
+.cover::after{
+  content:'';position:absolute;
+  bottom:-200px;left:50%;transform:translateX(-50%);
+  width:900px;height:600px;
+  background:radial-gradient(ellipse,rgba(0,151,77,0.09) 0%,transparent 65%);
+  pointer-events:none;
+}
+
+.cover-header{
+  display:flex;justify-content:space-between;align-items:center;
+  position:relative;z-index:2;
+}
+.cover-header-left{
+  font-family:'Outfit',sans-serif;
+  font-size:11px;font-weight:500;letter-spacing:3px;
+  text-transform:uppercase;color:var(--muted);
+}
+.cover-header-right{
+  font-size:11px;color:var(--dim);letter-spacing:1px;
+}
+
+.cover-body{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:0;
+  position:relative;z-index:2;
+}
+
+.cover-mark{
+  flex:1;
+  display:flex;align-items:center;justify-content:flex-end;
+  padding-right:80px;
+}
+
+.cover-copy{
+  flex:1;
+  padding-left:80px;
+  border-left:1px solid var(--border);
+}
+
+.cover-eyebrow{
+  font-size:11px;font-weight:500;letter-spacing:4px;
+  text-transform:uppercase;
+  color:var(--jade);
+  margin-bottom:20px;
+  display:flex;align-items:center;gap:12px;
+}
+.cover-eyebrow::before{
+  content:'';width:28px;height:1px;background:var(--jade);
+}
+
+.cover-title{
+  font-family:'Cormorant Garamond',serif;
+  font-size:60px;font-weight:300;line-height:1.1;
+  color:var(--text);
+  margin-bottom:28px;
+}
+.cover-title em{
+  font-style:italic;color:var(--jade);
+}
+
+.cover-lead{
+  font-size:14px;line-height:1.9;color:var(--muted);
+  max-width:400px;margin-bottom:36px;
+  font-weight:300;
+}
+.cover-lead strong{color:var(--text);font-weight:500;}
+
+.cover-footer{
+  display:flex;justify-content:space-between;align-items:flex-end;
+  font-size:11px;color:var(--dim);letter-spacing:1px;
+  position:relative;z-index:2;
+  padding-top:24px;border-top:1px solid var(--border);
+}
+.cover-footer span{color:var(--muted);}
+
+/* ══════════════════════════════════════════
+   02 — RATIONALE
+══════════════════════════════════════════ */
+.rationale{
+  display:grid;grid-template-columns:1fr 1fr;
+  border-bottom:1px solid var(--border);
+}
+.rat-left{
+  padding:80px 64px;
+  border-right:1px solid var(--border);
+}
+.rat-right{
+  padding:80px 64px;
+  display:grid;grid-template-rows:1fr 1fr;gap:1px;
+  background:var(--border);
+}
+.rat-item{
+  background:var(--ink);
+  padding:40px;
+}
+
+.section-number{
+  font-size:10px;font-weight:600;letter-spacing:3px;
+  text-transform:uppercase;color:var(--muted);
+  margin-bottom:36px;
+  display:flex;align-items:center;gap:12px;
+}
+.section-number::after{content:'';flex:1;height:1px;background:var(--border);}
+
+.rat-heading{
+  font-family:'Cormorant Garamond',serif;
+  font-size:38px;font-weight:300;line-height:1.2;
+  color:var(--text);margin-bottom:24px;
+}
+.rat-heading em{font-style:italic;color:var(--jade);}
+
+.rat-body{
+  font-size:14px;line-height:1.9;
+  color:var(--muted);font-weight:300;
+}
+.rat-body p{margin-bottom:16px;}
+.rat-body strong{color:var(--text);font-weight:500;}
+
+.rat-item-num{
+  font-family:'Cormorant Garamond',serif;
+  font-size:48px;font-weight:300;
+  color:var(--dim);line-height:1;
+  margin-bottom:16px;
+}
+.rat-item-title{
+  font-size:14px;font-weight:600;
+  color:var(--text);margin-bottom:10px;letter-spacing:.5px;
+}
+.rat-item-body{
+  font-size:13px;line-height:1.7;color:var(--muted);font-weight:300;
+}
+
+/* ══════════════════════════════════════════
+   03 — THE MARK (full spotlight)
+══════════════════════════════════════════ */
+.mark-section{
+  padding:100px 64px;
+  text-align:center;
+  border-bottom:1px solid var(--border);
+  position:relative;overflow:hidden;
+  background:linear-gradient(180deg,var(--ink) 0%,var(--deep) 50%,var(--ink) 100%);
+}
+.mark-section::before{
+  content:'';position:absolute;
+  top:50%;left:50%;transform:translate(-50%,-50%);
+  width:700px;height:700px;
+  background:radial-gradient(ellipse,rgba(0,151,77,0.07) 0%,transparent 60%);
+  pointer-events:none;
+}
+.mark-section-label{
+  font-size:10px;font-weight:500;letter-spacing:4px;
+  text-transform:uppercase;color:var(--muted);
+  margin-bottom:64px;
+}
+
+/* ══════════════════════════════════════════
+   04 — COLOUR
+══════════════════════════════════════════ */
+.colour-section{
+  border-bottom:1px solid var(--border);
+}
+.colour-header{
+  padding:64px 64px 40px;
+}
+.swatches{
+  display:grid;grid-template-columns:repeat(6,1fr);
+  border-top:1px solid var(--border);
+}
+.swatch{
+  padding:36px 28px;
+  border-right:1px solid var(--border);
+  transition:transform .2s;cursor:default;
+}
+.swatch:last-child{border-right:none;}
+.swatch:hover{transform:translateY(-4px);}
+.swatch-blob{
+  width:48px;height:48px;border-radius:12px;
+  margin-bottom:20px;
+}
+.swatch-role{
+  font-size:10px;font-weight:600;letter-spacing:2px;
+  text-transform:uppercase;color:var(--muted);margin-bottom:6px;
+}
+.swatch-name{
+  font-size:16px;font-weight:600;color:var(--text);margin-bottom:4px;
+}
+.swatch-hex{
+  font-size:12px;color:var(--dim);
+  font-family:monospace;letter-spacing:1px;
+}
+.swatch-note{
+  font-size:12px;color:var(--muted);
+  margin-top:10px;line-height:1.5;
+}
+
+/* ══════════════════════════════════════════
+   05 — TYPE
+══════════════════════════════════════════ */
+.type-section{
+  display:grid;grid-template-columns:1fr 1fr;
+  border-bottom:1px solid var(--border);
+}
+.type-block{
+  padding:64px;
+}
+.type-block:first-child{border-right:1px solid var(--border);}
+.type-label{
+  font-size:10px;font-weight:600;letter-spacing:3px;
+  text-transform:uppercase;color:var(--muted);
+  margin-bottom:32px;
+}
+.type-display{
+  font-family:'Cormorant Garamond',serif;
+  font-size:52px;font-weight:300;line-height:1.15;
+  color:var(--text);margin-bottom:16px;
+}
+.type-display-2{
+  font-family:'Outfit',sans-serif;
+  font-size:36px;font-weight:700;line-height:1.2;
+  color:var(--text);margin-bottom:16px;letter-spacing:-0.5px;
+}
+.type-spec{font-size:12px;color:var(--muted);line-height:1.6;}
+.type-rationale{
+  font-size:13px;line-height:1.8;color:var(--muted);
+  font-weight:300;margin-top:24px;border-top:1px solid var(--border);padding-top:24px;
+}
+.type-rationale strong{color:var(--text);}
+
+/* ══════════════════════════════════════════
+   06 — APPLICATIONS
+══════════════════════════════════════════ */
+.apps-section{padding:80px 64px;}
+.apps-grid{
+  display:grid;grid-template-columns:1fr 1fr 1fr;
+  gap:1px;background:var(--border);
+  margin-top:56px;
+}
+.app-card{
+  background:var(--ink);
+  overflow:hidden;
+}
+.app-preview{
+  display:flex;align-items:center;justify-content:center;
+  padding:56px 40px;
+}
+.app-meta{
+  padding:20px 28px;
+  border-top:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+}
+.app-name{
+  font-size:11px;font-weight:600;letter-spacing:2px;
+  text-transform:uppercase;color:var(--muted);
+}
+.app-use{
+  font-size:11px;color:var(--dim);
+}
+
+/* ══════════════════════════════════════════
+   RESPONSIVE
+══════════════════════════════════════════ */
+@media(max-width:960px){
+  .cover{padding:40px 32px;}
+  .cover-body{flex-direction:column;gap:60px;padding:60px 0;}
+  .cover-mark{padding-right:0;justify-content:center;}
+  .cover-copy{padding-left:0;border-left:none;border-top:1px solid var(--border);padding-top:48px;}
+  .rationale{grid-template-columns:1fr;}
+  .rat-left{padding:60px 32px;}
+  .rat-right{padding:0;}
+  .type-section{grid-template-columns:1fr;}
+  .type-block:first-child{border-right:none;border-bottom:1px solid var(--border);}
+  .type-block{padding:48px 32px;}
+  .apps-grid{grid-template-columns:1fr;}
+  .swatches{grid-template-columns:repeat(3,1fr);}
+  .colour-header{padding:48px 32px 32px;}
+  .apps-section{padding:60px 32px;}
+}
+</style>
 </head>
 <body>
-    <div id="root"></div>
 
-    <script type="text/babel">
-        const { useState, useEffect, useRef } = React;
+<!-- ══════════════════════════════
+  SVG DEFS — reusable gradients
+══════════════════════════════ -->
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <!-- Primary: forest → jade → teal gold kiss -->
+    <linearGradient id="G_primary" x1="66" y1="41" x2="414" y2="189" gradientUnits="userSpaceOnUse">
+      <stop offset="0%"   stop-color="#0F7A40"/>
+      <stop offset="42%"  stop-color="#00974D"/>
+      <stop offset="75%"  stop-color="#00B87A"/>
+      <stop offset="100%" stop-color="#00D4A8"/>
+    </linearGradient>
+    <!-- Gold accent for nodes -->
+    <linearGradient id="G_gold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%"   stop-color="#C8A84B"/>
+      <stop offset="100%" stop-color="#E8C96A"/>
+    </linearGradient>
+    <!-- Wordmark gradient -->
+    <linearGradient id="G_word" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%"   stop-color="#00B87A"/>
+      <stop offset="100%" stop-color="#00D4A8"/>
+    </linearGradient>
+    <!-- Print / white bg -->
+    <linearGradient id="G_print" x1="66" y1="41" x2="414" y2="189" gradientUnits="userSpaceOnUse">
+      <stop offset="0%"   stop-color="#0A4D28"/>
+      <stop offset="100%" stop-color="#007060"/>
+    </linearGradient>
+    <!-- Blue-dark variant -->
+    <linearGradient id="G_blue" x1="66" y1="41" x2="414" y2="189" gradientUnits="userSpaceOnUse">
+      <stop offset="0%"   stop-color="#0D5C6E"/>
+      <stop offset="100%" stop-color="#00A8B4"/>
+    </linearGradient>
+    <!-- Glow filter -->
+    <filter id="F_glow" x="-25%" y="-25%" width="150%" height="150%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="5" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="F_glow_sm" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+</svg>
 
-        const formatCurrency = (amount) => {
-            if (isNaN(amount) || amount === null) return "0 ₫";
-            return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
-        };
+<!-- ══════════════════════════════
+  COVER
+══════════════════════════════ -->
+<section class="cover">
+  <div class="cover-header">
+    <div class="cover-header-left">CHC — Brand Identity System</div>
+    <div class="cover-header-right">Designer's Concept · 2025</div>
+  </div>
 
-        const App = () => {
-            // Updated State: All contract-specific defaults are REMOVED (set to 0 or empty)
-            const [data, setData] = useState({
-                baseSalary: "",
-                qualityBonus: "",
-                lunchAllowance: "",
-                rate: "",
-                workDays: "",
-                hoursPerDay: 8,
-                otHours15: "",
-                otHours20: "",
-                otDayOff: "",
-                projBonus: "",
-                lateMin: "",
-                insuranceBase: "", // Để trống, người dùng tự nhập
-                insuranceRate: 10.5,
-                personalDeduction: 11000000
-            });
+  <div class="cover-body">
+    <!-- THE MARK -->
+    <div class="cover-mark">
+      <!--
+        GEOMETRY (viewBox 0 0 480 320):
+        C1: cx=118 cy=115 R=90 r=60 α=55° opens LEFT
+        C2: cx=362 cy=115 R=90 r=60 α=55° opens RIGHT
+        Bar: x=178 y=110 w=124 h=10
+        Nodes: (178,115) (302,115)
+      -->
+      <svg width="400" height="340" viewBox="-10 10 500 310" xmlns="http://www.w3.org/2000/svg">
 
-            const [results, setResults] = useState({});
-            const [isScanning, setIsScanning] = useState(false);
-            const [trialMode, setTrialMode] = useState(false);
-            const fileInputRef = useRef(null);
+        <!-- Ambient ring — outermost -->
+        <ellipse cx="240" cy="115" rx="215" ry="145"
+          fill="none" stroke="rgba(0,151,77,0.05)" stroke-width="1.5"/>
+        <!-- Inner ambient ring -->
+        <ellipse cx="240" cy="115" rx="170" ry="115"
+          fill="none" stroke="rgba(0,184,122,0.06)" stroke-width="1"/>
 
-            useEffect(() => {
-                const num = (v) => {
-                    const n = parseFloat(v); return (!v || isNaN(n)) ? 0 : n;
-                };
+        <!-- CHC MARK -->
+        <path d="M 66.4,41.3 A 90,90 0 1,1 66.4,188.7 L 83.6,164.1 A 60,60 0 1,0 83.6,65.9 Z"
+          fill="url(#G_primary)" filter="url(#F_glow)"/>
+        <rect x="178" y="110" width="124" height="10" rx="5"
+          fill="url(#G_primary)" filter="url(#F_glow)"/>
+        <path d="M 413.6,41.3 A 90,90 0 1,0 413.6,188.7 L 396.4,164.1 A 60,60 0 1,1 396.4,65.9 Z"
+          fill="url(#G_primary)" filter="url(#F_glow)"/>
 
-                // 1. Calculate Earnings
-                // Rate logic: Lương thực tế = (Lương Gross / Công Chuẩn) * Công thực tế
-                const ratio = num(data.workDays) === 0 ? 0 : num(data.rate) / num(data.workDays);
+        <!-- Integration nodes: gold accent — the designer's signature element -->
+        <!-- Node L -->
+        <circle cx="178" cy="115" r="12" fill="url(#G_gold)" filter="url(#F_glow_sm)"/>
+        <circle cx="178" cy="115" r="18" fill="none"
+          stroke="rgba(200,168,75,0.3)" stroke-width="1.5"/>
+        <circle cx="178" cy="115" r="27" fill="none"
+          stroke="rgba(200,168,75,0.1)" stroke-width="1"/>
+        <!-- Node R -->
+        <circle cx="302" cy="115" r="12" fill="url(#G_gold)" filter="url(#F_glow_sm)"/>
+        <circle cx="302" cy="115" r="18" fill="none"
+          stroke="rgba(200,168,75,0.3)" stroke-width="1.5"/>
+        <circle cx="302" cy="115" r="27" fill="none"
+          stroke="rgba(200,168,75,0.1)" stroke-width="1"/>
 
-                // Đối với thử việc: thường nhận 85-90% lương Gross, nhưng người dùng có thể nhập trực tiếp lương thử việc vào ô Base Salary.
-                // Ở đây ta tính theo công thức chuẩn:
-                // Nếu thử việc = true -> Lương tính thuế = Tổng thu nhập (khấu trừ 10%)
-                
-                const actualBaseSalary = num(data.baseSalary) * ratio;
-                const actualQualityBonus = num(data.qualityBonus) * ratio;
-                const actualLunch = num(data.lunchAllowance) * ratio;
+        <!-- WORDMARK -->
+        <text x="240" y="236"
+          text-anchor="middle"
+          font-family="'Outfit','Segoe UI',sans-serif"
+          font-size="26" font-weight="700"
+          letter-spacing="18"
+          fill="url(#G_word)">CHC</text>
 
-                // OT Calculation
-                const hourlyRate = (num(data.baseSalary) && num(data.workDays) && num(data.hoursPerDay))
-                    ? num(data.baseSalary) / (num(data.workDays) * num(data.hoursPerDay)) : 0;
-                
-                const otSalary15 = num(data.otHours15) * 1.5 * hourlyRate;
-                const otSalary20 = num(data.otHours20) * 2.0 * hourlyRate; // Đêm
-                const otSalaryDayOff = num(data.otDayOff) * 2.0 * hourlyRate; // Ngày nghỉ
-                
-                const totalOtSalary = otSalary15 + otSalary20 + otSalaryDayOff;
+        <!-- Full company name -->
+        <text x="240" y="260"
+          text-anchor="middle"
+          font-family="'Outfit','Segoe UI',sans-serif"
+          font-size="9" font-weight="400"
+          letter-spacing="5"
+          fill="#3A7055">SUSTAINABLE TECHNOLOGY</text>
 
-                // Deductions
-                const latePenalty = num(data.lateMin) * 1000;
-                
-                // Insurance
-                // Nếu thử việc -> Không đóng bảo hiểm (thường là vậy)
-                const currentInsuranceBase = trialMode ? 0 : num(data.insuranceBase);
-                const currentInsuranceRate = trialMode ? 0 : num(data.insuranceRate);
-                const insuranceDeduction = currentInsuranceBase * (currentInsuranceRate / 100);
+        <!-- Rule with gold taper -->
+        <line x1="130" y1="272" x2="350" y2="272"
+          stroke="rgba(200,168,75,0.2)" stroke-width="0.8"/>
 
-                // Income
-                const totalIncome = actualBaseSalary + actualQualityBonus + actualLunch + totalOtSalary + num(data.projBonus);
+        <!-- Slogan -->
+        <text x="240" y="290"
+          text-anchor="middle"
+          font-family="'Cormorant Garamond','Georgia',serif"
+          font-size="11.5" font-style="italic" font-weight="300"
+          letter-spacing="2"
+          fill="#4A7A5E">Where Systems Meet. Where Value Grows.</text>
 
-                // Tax logic
-                let taxableIncome = totalIncome - actualLunch; 
-                let taxDeductions = num(data.personalDeduction) + insuranceDeduction;
-                
-                let tax = 0;
-                let taxAssessmentIncome = 0;
+      </svg>
+    </div>
 
-                if (trialMode) {
-                     // Thuế thử việc: Khấu trừ 10% tại nguồn nếu thu nhập từ 2 triệu trở lên
-                     // Lưu ý: Thử việc thường tính trên tổng thu nhập chi trả, không có giảm trừ gia cảnh
-                    if (totalIncome >= 2000000) {
-                        tax = totalIncome * 0.10;
-                    }
-                } else {
-                    // PIT Progressive (Chính thức)
-                    taxAssessmentIncome = taxableIncome - taxDeductions;
-                    if (taxAssessmentIncome < 0) taxAssessmentIncome = 0;
+    <!-- COPY -->
+    <div class="cover-copy">
+      <div class="cover-eyebrow">Designer's Rationale</div>
+      <h1 class="cover-title">
+        Một logo<br/>
+        <em>kể được</em><br/>
+        câu chuyện
+      </h1>
+      <p class="cover-lead">
+        CHC không bán phần mềm đơn lẻ. CHC bán <strong>hệ sinh thái tích hợp</strong> — ERP, Ecom, Omnichannel, ESG — tất cả nối lại thành một. Logo phải chứa đựng điều đó trong từng đường nét.
+      </p>
+      <p class="cover-lead" style="margin-bottom:0">
+        Hai điểm vàng tại thanh nối là trái tim của thiết kế: chúng là <strong>integration nodes</strong> — nơi các hệ thống bắt tay nhau. Màu vàng không phải ngẫu nhiên: Mộc sinh Hoả, Hoả sinh Kim — vàng là màu của giá trị và sự phồn thịnh trong Ngũ hành.
+      </p>
+    </div>
+  </div>
 
-                    if (taxAssessmentIncome <= 5000000) tax = taxAssessmentIncome * 0.05;
-                    else if (taxAssessmentIncome <= 10000000) tax = 250000 + (taxAssessmentIncome - 5000000) * 0.10;
-                    else if (taxAssessmentIncome <= 18000000) tax = 750000 + (taxAssessmentIncome - 10000000) * 0.15;
-                    else if (taxAssessmentIncome <= 32000000) tax = 1950000 + (taxAssessmentIncome - 18000000) * 0.20;
-                    else tax = 4750000 + (taxAssessmentIncome - 32000000) * 0.25;
-                }
+  <div class="cover-footer">
+    <span>Công ty TNHH Công nghệ Bền vững CHC · CHC Sustainable Technology Co., Ltd</span>
+    <span>«&thinsp;Where Systems Meet. Where Value Grows.&thinsp;»</span>
+  </div>
+</section>
 
-                const netIncome = totalIncome - insuranceDeduction - latePenalty - tax;
+<!-- ══════════════════════════════
+  RATIONALE
+══════════════════════════════ -->
+<section class="rationale">
+  <div class="rat-left">
+    <div class="section-number">01 &nbsp;·&nbsp; Design Rationale</div>
+    <h2 class="rat-heading">
+      Tại sao tôi<br/>
+      thiết kế<br/>
+      <em>như thế này</em>
+    </h2>
+    <div class="rat-body">
+      <p>Tôi nhìn vào bản mô tả dịch vụ của CHC và thấy một pattern nhất quán: công ty này là <strong>người kiến tạo cầu nối</strong>. ERP nối bộ phận với bộ phận. Omnichannel nối thương hiệu với khách hàng. ESG nối doanh nghiệp với trách nhiệm dài hạn.</p>
+      <p>Mark CHC vốn đã hay ở chỗ hai chữ C mở ra hai phía, thanh H ở giữa. Nhưng nó vẫn chỉ là lettermark — đẹp mà chưa nói gì. Quyết định sáng tạo của tôi là biến hai điểm giao tiếp đó thành <strong>integration nodes</strong> màu vàng — tham chiếu trực quan đến network topology, API handshake, điểm kết nối hệ thống.</p>
+      <p>Màu chủ đạo xanh lá giữ mệnh Mộc và định vị ESG. Nhưng tôi đưa vào một lớp vàng nhạt — <strong>kim loại quý</strong> — vừa gợi giá trị kinh tế, vừa là cầu nối ngũ hành (Mộc → Hoả → Kim), vừa tạo tương phản tinh tế với xanh lá mà không làm mất đi sự chuyên nghiệp.</p>
+    </div>
+  </div>
 
-                setResults({
-                    hourlyRate,
-                    actualBaseSalary,
-                    actualQualityBonus,
-                    actualLunch,
-                    otSalary15,
-                    otSalary20,
-                    otSalaryDayOff,
-                    totalOtSalary,
-                    insuranceDeduction,
-                    taxableIncome,
-                    taxAssessmentIncome,
-                    taxDeductions,
-                    tax,
-                    latePenalty,
-                    netIncome
-                });
-            }, [data, trialMode]);
+  <div class="rat-right">
+    <div class="rat-item">
+      <div class="rat-item-num">I</div>
+      <div class="rat-item-title">Cấu trúc C–H–C: Bộ khung bất biến</div>
+      <div class="rat-item-body">Lettermark CHC là tài sản thương hiệu không nên bỏ — nó chứa tên công ty, dễ nhận biết, và có hình học mạnh. Tôi không thay, tôi nâng cấp.</div>
+    </div>
+    <div class="rat-item" style="border-top:1px solid var(--border)">
+      <div class="rat-item-num">II</div>
+      <div class="rat-item-title">Vàng trên xanh: Câu chuyện Ngũ hành</div>
+      <div class="rat-item-body">Mộc (xanh lá) sinh Hoả, Hoả sinh Kim (vàng). Hai điểm vàng là đích đến của dòng chảy năng lượng — giá trị được tạo ra tại điểm tích hợp. Đây là một quyết định ý nghĩa, không chỉ thẩm mỹ.</div>
+    </div>
+    <div class="rat-item" style="border-top:1px solid var(--border)">
+      <div class="rat-item-num">III</div>
+      <div class="rat-item-title">Slogan mới: "Where Systems Meet. Where Value Grows."</div>
+      <div class="rat-item-body">Hai vế song song, mỗi vế một lớp nghĩa: integration (kỹ thuật) và value creation (kinh doanh). Ngắn, có nhịp, nói đúng bản chất CHC.</div>
+    </div>
+    <div class="rat-item" style="border-top:1px solid var(--border)">
+      <div class="rat-item-num">IV</div>
+      <div class="rat-item-title">Typography: Serif + Sans đối lập</div>
+      <div class="rat-item-body">Cormorant Garamond cho slogan — elegant, organic, gợi bền vững. Outfit cho wordmark và tagline — geometric, clean, modern tech. Sự đối lập tạo nhân cách thương hiệu: công nghệ nhưng có chiều sâu.</div>
+    </div>
+  </div>
+</section>
 
-            const handleInputChange = (e) => {
-                const { name, value } = e.target;
-                setData(prev => ({
-                    ...prev,
-                    [name]: value
-                }));
-            };
+<!-- ══════════════════════════════
+  THE MARK — variations spotlight
+══════════════════════════════ -->
+<section class="mark-section">
+  <div class="mark-section-label">02 · The Mark — All Variations</div>
 
-            // Toggle Handler
-            const toggleTrialMode = () => {
-                setTrialMode(!trialMode);
-            };
-            
-             const handleImageUpload = async (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
+  <!-- Row 1: Dark versions -->
+  <div style="display:flex;justify-content:center;gap:60px;flex-wrap:wrap;margin-bottom:64px;">
 
-                setIsScanning(true);
-                
-                try {
-                    const worker = await Tesseract.createWorker('eng', 1, {
-                        logger: m => console.log(m)
-                    });
-                    
-                    const ret = await worker.recognize(file);
-                    const text = ret.data.text;
-                    console.log("OCR Result:", text);
-                    
-                    // --- Parsing Logic Updated ---
-                    let foundData = {};
-                    let debugMsg = "";
+    <!-- Primary / Dark bg -->
+    <div style="text-align:center">
+      <div style="background:#071510;border:1px solid rgba(0,184,122,0.12);
+        border-radius:24px;padding:48px 56px;display:inline-block;margin-bottom:16px">
+        <svg width="320" height="240" viewBox="-10 10 500 290" xmlns="http://www.w3.org/2000/svg">
+          <path d="M 66.4,41.3 A 90,90 0 1,1 66.4,188.7 L 83.6,164.1 A 60,60 0 1,0 83.6,65.9 Z" fill="url(#G_primary)" filter="url(#F_glow)"/>
+          <rect x="178" y="110" width="124" height="10" rx="5" fill="url(#G_primary)" filter="url(#F_glow)"/>
+          <path d="M 413.6,41.3 A 90,90 0 1,0 413.6,188.7 L 396.4,164.1 A 60,60 0 1,1 396.4,65.9 Z" fill="url(#G_primary)" filter="url(#F_glow)"/>
+          <circle cx="178" cy="115" r="11" fill="url(#G_gold)" filter="url(#F_glow_sm)"/>
+          <circle cx="178" cy="115" r="17" fill="none" stroke="rgba(200,168,75,0.28)" stroke-width="1.5"/>
+          <circle cx="302" cy="115" r="11" fill="url(#G_gold)" filter="url(#F_glow_sm)"/>
+          <circle cx="302" cy="115" r="17" fill="none" stroke="rgba(200,168,75,0.28)" stroke-width="1.5"/>
+          <text x="240" y="230" text-anchor="middle" font-family="'Outfit',sans-serif" font-size="24" font-weight="700" letter-spacing="16" fill="url(#G_word)">CHC</text>
+          <text x="240" y="250" text-anchor="middle" font-family="'Outfit',sans-serif" font-size="8.5" letter-spacing="4.5" fill="#3A7055">SUSTAINABLE TECHNOLOGY</text>
+          <line x1="130" y1="261" x2="350" y2="261" stroke="rgba(200,168,75,0.18)" stroke-width="0.8"/>
+          <text x="240" y="278" text-anchor="middle" font-family="'Cormorant Garamond','Georgia',serif" font-size="11" font-style="italic" font-weight="300" letter-spacing="1.5" fill="#4A7A5E">Where Systems Meet. Where Value Grows.</text>
+        </svg>
+      </div>
+      <div style="font-size:10px;font-weight:500;letter-spacing:2.5px;text-transform:uppercase;color:var(--muted)">Primary · Dark</div>
+    </div>
 
-                    // 1. RATE (Tìm A/B, ví dụ: 17.8/ 20)
-                    const rateRegex = /Rate[\s\S]*?(\d+(\.\d+)?)\s*\/\s*(\d+(\.\d+)?)/i;
-                    const rateMatch = text.match(rateRegex) || text.match(/(\d{1,2}(\.\d+)?)\s*\/\s*(\d{1,2}(\.\d+)?)/);
-                    if (rateMatch) {
-                        foundData.rate = parseFloat(rateMatch[1]);
-                        const wd = parseFloat(rateMatch[3]);
-                        if (wd > 10) foundData.workDays = wd;
-                        debugMsg += `- Công: ${foundData.rate} / ${foundData.workDays || '?'}\n`;
-                    }
-                    
-                    // 2. TÌM DÒNG "TOTAL" để trích xuất OT và LATE chính xác
-                    const lines = text.split('\n');
-                    let totalLine = "";
-                    for (const line of lines) {
-                        if (line.trim().startsWith("Total")) {
-                            totalLine = line;
-                            break;
-                        }
-                    }
+    <!-- White bg -->
+    <div style="text-align:center">
+      <div style="background:#F5FAF6;border:1px solid #D8EBE0;
+        border-radius:24px;padding:48px 56px;display:inline-block;margin-bottom:16px">
+        <svg width="320" height="240" viewBox="-10 10 500 290" xmlns="http://www.w3.org/2000/svg">
+          <path d="M 66.4,41.3 A 90,90 0 1,1 66.4,188.7 L 83.6,164.1 A 60,60 0 1,0 83.6,65.9 Z" fill="url(#G_print)"/>
+          <rect x="178" y="110" width="124" height="10" rx="5" fill="url(#G_print)"/>
+          <path d="M 413.6,41.3 A 90,90 0 1,0 413.6,188.7 L 396.4,164.1 A 60,60 0 1,1 396.4,65.9 Z" fill="url(#G_print)"/>
+          <circle cx="178" cy="115" r="11" fill="#B8922A"/>
+          <circle cx="178" cy="115" r="17" fill="none" stroke="rgba(184,146,42,0.3)" stroke-width="1.5"/>
+          <circle cx="302" cy="115" r="11" fill="#B8922A"/>
+          <circle cx="302" cy="115" r="17" fill="none" stroke="rgba(184,146,42,0.3)" stroke-width="1.5"/>
+          <text x="240" y="230" text-anchor="middle" font-family="'Outfit',sans-serif" font-size="24" font-weight="700" letter-spacing="16" fill="#0A4D28">CHC</text>
+          <text x="240" y="250" text-anchor="middle" font-family="'Outfit',sans-serif" font-size="8.5" letter-spacing="4.5" fill="#2A6A42">SUSTAINABLE TECHNOLOGY</text>
+          <line x1="130" y1="261" x2="350" y2="261" stroke="rgba(184,146,42,0.25)" stroke-width="0.8"/>
+          <text x="240" y="278" text-anchor="middle" font-family="'Cormorant Garamond','Georgia',serif" font-size="11" font-style="italic" font-weight="300" letter-spacing="1.5" fill="#3A6A50">Where Systems Meet. Where Value Grows.</text>
+        </svg>
+      </div>
+      <div style="font-size:10px;font-weight:500;letter-spacing:2.5px;text-transform:uppercase;color:var(--muted)">Print · Light</div>
+    </div>
 
-                    if (totalLine) {
-                        console.log("Found Total Line:", totalLine);
-                        // Trích xuất tất cả các số từ dòng Total
-                        const numbersInTotal = totalLine.match(/(\d+(\.\d+)?)/g);
-                        
-                        if (numbersInTotal && numbersInTotal.length >= 5) {
-                            // Dựa trên cấu trúc ảnh: Rate, OT 1.5, OT 2.0, Day-Off, Late
-                            // Các số lần lượt là: 17.8, 15.5, 1.5, 21.9, 68.0
-                            // Lấy số thứ 2 (15.5) làm OT 1.5
-                            foundData.otHours15 = parseFloat(numbersInTotal[1]);
-                            debugMsg += `- OT 1.5: ${foundData.otHours15}h\n`;
-                            
-                            // Lấy số thứ 3 (1.5) làm OT Đêm
-                            foundData.otHours20 = parseFloat(numbersInTotal[2]);
-                            debugMsg += `- OT Đêm: ${foundData.otHours20}h\n`;
+  </div>
 
-                            // Lấy số thứ 4 (21.9) làm OT Nghỉ
-                            foundData.otDayOff = parseFloat(numbersInTotal[3]);
-                            debugMsg += `- OT Nghỉ: ${foundData.otDayOff}h\n`;
+  <!-- Row 2: Symbol only + icon sizes -->
+  <div style="display:flex;justify-content:center;align-items:center;gap:48px;flex-wrap:wrap">
 
-                            // Lấy số thứ 5 (68.0) làm Late
-                            foundData.lateMin = parseFloat(numbersInTotal[4]);
-                            debugMsg += `- Muộn: ${foundData.lateMin}p\n`;
-                        }
-                    } else {
-                        // Fallback: Nếu không tìm thấy dòng Total, dùng phương pháp cũ
-                        const lateMatch = text.match(/Late\s*(Total)?.*?(\d+(\.\d+)?)/i);
-                        if (lateMatch) { foundData.lateMin = parseFloat(lateMatch[2]); debugMsg += `- Muộn (Fallback): ${foundData.lateMin}p\n`; }
-                        
-                        const ot15Match = text.match(/18h[\s-]?22h[\s\S]*?(\d+(\.\d+)?)/i);
-                        if (ot15Match) { foundData.otHours15 = parseFloat(ot15Match[1]); debugMsg += `- OT 1.5 (Fallback): ${foundData.otHours15}h\n`; }
+    <!-- Symbol only dark -->
+    <div style="text-align:center">
+      <div style="background:#071510;border:1px solid rgba(0,184,122,0.1);
+        border-radius:20px;padding:32px 40px;display:inline-block;margin-bottom:12px">
+        <svg width="180" height="96" viewBox="15 41 450 148" xmlns="http://www.w3.org/2000/svg">
+          <path d="M 66.4,41.3 A 90,90 0 1,1 66.4,188.7 L 83.6,164.1 A 60,60 0 1,0 83.6,65.9 Z" fill="url(#G_primary)" filter="url(#F_glow)"/>
+          <rect x="178" y="110" width="124" height="10" rx="5" fill="url(#G_primary)" filter="url(#F_glow)"/>
+          <path d="M 413.6,41.3 A 90,90 0 1,0 413.6,188.7 L 396.4,164.1 A 60,60 0 1,1 396.4,65.9 Z" fill="url(#G_primary)" filter="url(#F_glow)"/>
+          <circle cx="178" cy="115" r="11" fill="url(#G_gold)" filter="url(#F_glow_sm)"/>
+          <circle cx="302" cy="115" r="11" fill="url(#G_gold)" filter="url(#F_glow_sm)"/>
+        </svg>
+      </div>
+      <div style="font-size:10px;font-weight:500;letter-spacing:2px;text-transform:uppercase;color:var(--muted)">Symbol · Dark</div>
+    </div>
 
-                        const ot20Match = text.match(/22h[\s-]?06h[\s\S]*?(\d+(\.\d+)?)/i);
-                        if (ot20Match) { foundData.otHours20 = parseFloat(ot20Match[1]); debugMsg += `- OT Đêm (Fallback): ${foundData.otHours20}h\n`; }
-                        
-                        const otDayOffMatch = text.match(/Day[\s-]?Off[\s\S]*?(\d+(\.\d+)?)/i);
-                        if (otDayOffMatch) { foundData.otDayOff = parseFloat(otDayOffMatch[1]); debugMsg += `- OT Nghỉ (Fallback): ${foundData.otDayOff}h\n`; }
-                    }
+    <!-- Symbol only white -->
+    <div style="text-align:center">
+      <div style="background:#F5FAF6;border:1px solid #D8EBE0;
+        border-radius:20px;padding:32px 40px;display:inline-block;margin-bottom:12px">
+        <svg width="180" height="96" viewBox="15 41 450 148" xmlns="http://www.w3.org/2000/svg">
+          <path d="M 66.4,41.3 A 90,90 0 1,1 66.4,188.7 L 83.6,164.1 A 60,60 0 1,0 83.6,65.9 Z" fill="url(#G_print)"/>
+          <rect x="178" y="110" width="124" height="10" rx="5" fill="url(#G_print)"/>
+          <path d="M 413.6,41.3 A 90,90 0 1,0 413.6,188.7 L 396.4,164.1 A 60,60 0 1,1 396.4,65.9 Z" fill="url(#G_print)"/>
+          <circle cx="178" cy="115" r="11" fill="#B8922A"/>
+          <circle cx="302" cy="115" r="11" fill="#B8922A"/>
+        </svg>
+      </div>
+      <div style="font-size:10px;font-weight:500;letter-spacing:2px;text-transform:uppercase;color:var(--muted)">Symbol · Light</div>
+    </div>
 
-                    if(Object.keys(foundData).length > 0) {
-                        setData(prev => ({...prev, ...foundData}));
-                        alert(`✅ Đã quét thành công dữ liệu chấm công!\n\n${debugMsg}`);
-                    } else {
-                         alert(`⚠️ Không tìm thấy dữ liệu rõ ràng.\n\nVăn bản đọc được: "${text.substring(0, 100)}..."`);
-                    }
-                    
-                    await worker.terminate();
-                } catch (err) {
-                    console.error(err);
-                    alert("❌ Lỗi khi đọc ảnh: " + err.message);
-                }
-                setIsScanning(false);
-            };
+    <!-- App icon 96px -->
+    <div style="text-align:center">
+      <div style="background:linear-gradient(135deg,#071A10,#061218);
+        border-radius:24px;padding:0;width:96px;height:96px;
+        display:inline-flex;align-items:center;justify-content:center;
+        box-shadow:0 8px 32px rgba(0,151,77,0.25);margin-bottom:12px">
+        <svg width="64" height="42" viewBox="30 51 420 128" xmlns="http://www.w3.org/2000/svg">
+          <path d="M 66.4,41.3 A 90,90 0 1,1 66.4,188.7 L 83.6,164.1 A 60,60 0 1,0 83.6,65.9 Z" fill="url(#G_primary)"/>
+          <rect x="178" y="110" width="124" height="10" rx="5" fill="url(#G_primary)"/>
+          <path d="M 413.6,41.3 A 90,90 0 1,0 413.6,188.7 L 396.4,164.1 A 60,60 0 1,1 396.4,65.9 Z" fill="url(#G_primary)"/>
+          <circle cx="178" cy="115" r="11" fill="#C8A84B"/>
+          <circle cx="302" cy="115" r="11" fill="#C8A84B"/>
+        </svg>
+      </div>
+      <div style="font-size:10px;font-weight:500;letter-spacing:2px;text-transform:uppercase;color:var(--muted)">App Icon 96</div>
+    </div>
 
-            return (
-                <div className="min-h-screen p-4 md:p-8 max-w-6xl mx-auto font-sans">
-                    <header className="mb-6 text-center md:text-left flex flex-col md:flex-row justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-                        <div>
-                            <h1 className="text-3xl font-bold text-blue-900 flex items-center gap-2 justify-center md:justify-start">
-                                <i data-lucide="file-check" className="w-8 h-8 text-blue-600"></i>
-                                Tính Lương NET
-                            </h1>
-                            <p className="text-gray-500 text-sm mt-1">
-                                Nhập số liệu từ hợp đồng và bảng công để tính toán
-                            </p>
-                        </div>
-                        
-                        <div className="flex flex-col md:flex-row gap-4 mt-4 md:mt-0 items-center">
-                            
-                            {/* Toggle Switch */}
-                            <div className="flex items-center justify-center w-full md:w-auto">
-                                <span className={`mr-2 text-sm font-bold ${!trialMode ? 'text-blue-600' : 'text-gray-400'}`}>Chính thức</span>
-                                <div className="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in">
-                                    <input 
-                                        type="checkbox" 
-                                        name="toggle" 
-                                        id="toggle" 
-                                        checked={trialMode}
-                                        onChange={toggleTrialMode}
-                                        className="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer transition-all duration-300 left-0 border-gray-300"
-                                    />
-                                    <label htmlFor="toggle" className={`toggle-label block overflow-hidden h-6 rounded-full cursor-pointer transition-colors duration-300 ${trialMode ? 'bg-orange-400' : 'bg-blue-200'}`}></label>
-                                </div>
-                                <span className={`text-sm font-bold ${trialMode ? 'text-orange-500' : 'text-gray-400'}`}>Thử việc</span>
-                            </div>
+    <!-- Favicon 32px -->
+    <div style="text-align:center">
+      <div style="background:linear-gradient(135deg,#071A10,#061218);
+        border-radius:8px;width:40px;height:40px;
+        display:inline-flex;align-items:center;justify-content:center;
+        box-shadow:0 4px 16px rgba(0,151,77,0.2);margin-bottom:12px">
+        <svg width="24" height="16" viewBox="30 51 420 128" xmlns="http://www.w3.org/2000/svg">
+          <path d="M 66.4,41.3 A 90,90 0 1,1 66.4,188.7 L 83.6,164.1 A 60,60 0 1,0 83.6,65.9 Z" fill="#00B87A"/>
+          <rect x="178" y="110" width="124" height="10" rx="5" fill="#00B87A"/>
+          <path d="M 413.6,41.3 A 90,90 0 1,0 413.6,188.7 L 396.4,164.1 A 60,60 0 1,1 396.4,65.9 Z" fill="#00B87A"/>
+          <circle cx="178" cy="115" r="11" fill="#C8A84B"/>
+          <circle cx="302" cy="115" r="11" fill="#C8A84B"/>
+        </svg>
+      </div>
+      <div style="font-size:10px;font-weight:500;letter-spacing:2px;text-transform:uppercase;color:var(--muted)">Favicon 32</div>
+    </div>
 
-                            <div className="relative">
-                                <input 
-                                    type="file" 
-                                    ref={fileInputRef}
-                                    onChange={handleImageUpload}
-                                    accept="image/*"
-                                    className="hidden"
-                                />
-                                <button 
-                                    onClick={() => fileInputRef.current.click()}
-                                    disabled={isScanning}
-                                    className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-6 py-2.5 rounded-full shadow-md font-medium transition-all transform hover:scale-105 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                    {isScanning ? (
-                                        <span className="flex items-center gap-2">
-                                            <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                                            Đang đọc ảnh...
-                                        </span>
-                                    ) : (
-                                        <span className="flex items-center gap-2">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"></rect><circle cx="9" cy="9" r="2"></circle><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"></path></svg>
-                                            Scan Bảng Công
-                                        </span>
-                                    )}
-                                </button>
-                            </div>
-                        </div>
-                    </header>
+    <!-- Monochrome -->
+    <div style="text-align:center">
+      <div style="background:#111;border:1px solid #222;
+        border-radius:20px;padding:32px 40px;display:inline-block;margin-bottom:12px">
+        <svg width="180" height="96" viewBox="15 41 450 148" xmlns="http://www.w3.org/2000/svg">
+          <path d="M 66.4,41.3 A 90,90 0 1,1 66.4,188.7 L 83.6,164.1 A 60,60 0 1,0 83.6,65.9 Z" fill="#FFFFFF"/>
+          <rect x="178" y="110" width="124" height="10" rx="5" fill="#FFFFFF"/>
+          <path d="M 413.6,41.3 A 90,90 0 1,0 413.6,188.7 L 396.4,164.1 A 60,60 0 1,1 396.4,65.9 Z" fill="#FFFFFF"/>
+          <circle cx="178" cy="115" r="11" fill="#CCCCCC"/>
+          <circle cx="302" cy="115" r="11" fill="#CCCCCC"/>
+        </svg>
+      </div>
+      <div style="font-size:10px;font-weight:500;letter-spacing:2px;text-transform:uppercase;color:var(--muted)">Monochrome</div>
+    </div>
 
-                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                        {/* INPUT SECTION */}
-                        <div className="lg:col-span-7 bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-                            
-                            {/* Contract Setup */}
-                            <div className={`p-4 rounded-lg border mb-6 transition-colors duration-300 ${trialMode ? 'bg-orange-50 border-orange-100' : 'bg-indigo-50 border-indigo-100'}`}>
-                                <h3 className={`text-sm font-bold uppercase tracking-wide mb-3 flex items-center gap-2 ${trialMode ? 'text-orange-800' : 'text-indigo-800'}`}>
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" x2="23" y1="8" y2="11"></line><line x1="23" x2="20" y1="8" y2="11"></line><line x1="16" x2="16" y1="13" y2="21"></line></svg>
-                                    Thông tin Hợp Đồng {trialMode && "(Thử việc)"}
-                                </h3>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div className="input-group">
-                                        <label>Lương cứng (Gross) <span className="tag-taxable">Chịu thuế</span></label>
-                                        <input type="number" name="baseSalary" value={data.baseSalary} onChange={handleInputChange} className={`font-semibold ${trialMode ? 'text-orange-900' : 'text-indigo-900'}`} placeholder="Nhập lương..." />
-                                    </div>
-                                    <div className="input-group">
-                                        <label>Thưởng KPI/Chất lượng <span className="tag-taxable">Chịu thuế</span></label>
-                                        <input type="number" name="qualityBonus" value={data.qualityBonus} onChange={handleInputChange} placeholder="0" />
-                                    </div>
-                                    <div className="input-group">
-                                        <label>Hỗ trợ ăn trưa <span className="tag-tax-exempt">Miễn thuế</span></label>
-                                        <input type="number" name="lunchAllowance" value={data.lunchAllowance} onChange={handleInputChange} placeholder="0" />
-                                    </div>
-                                     <div className="input-group">
-                                        <label>Lương đóng BHXH {trialMode && <span className="text-red-500">(Thường = 0)</span>}</label>
-                                        <input 
-                                            type="number" 
-                                            name="insuranceBase" 
-                                            value={data.insuranceBase} 
-                                            onChange={handleInputChange} 
-                                            className={`${trialMode ? 'bg-gray-100 text-gray-400' : ''}`} 
-                                            placeholder={trialMode ? "Không đóng" : "Nhập mức đóng..."} 
-                                            disabled={trialMode}
-                                        />
-                                    </div>
-                                </div>
-                                {trialMode && <div className="mt-2 text-xs text-orange-600 font-bold bg-orange-100 p-2 rounded flex items-start gap-1">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mt-0.5"><circle cx="12" cy="12" r="10"></circle><line x1="12" x2="12" y1="8" y2="12"></line><line x1="12" x2="12.01" y1="16" y2="16"></line></svg>
-                                    Lưu ý: Thuế thử việc khấu trừ 10% toàn bộ thu nhập (nếu {'>'}= 2 triệu). Không áp dụng biểu thuế lũy tiến và giảm trừ gia cảnh.
-                                </div>}
-                            </div>
+  </div>
+</section>
 
-                            {/* Timekeeping Data */}
-                            <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wide mb-3 flex items-center gap-2">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"></rect><line x1="16" x2="16" y1="2" y2="6"></line><line x1="8" x2="8" y1="2" y2="6"></line><line x1="3" x2="21" y1="10" y2="10"></line></svg>
-                                Dữ liệu chấm công
-                            </h3>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                                <div className="input-group relative">
-                                    <label>Công thực (A)</label>
-                                    <input type="number" name="rate" value={data.rate} onChange={handleInputChange} className="border-emerald-200 focus:border-emerald-500 pr-8" placeholder="0" />
-                                    <span className="absolute right-3 top-8 text-gray-400 text-xs font-bold">ngày</span>
-                                </div>
-                                <div className="input-group relative">
-                                    <label>Công chuẩn (B)</label>
-                                    <input type="number" name="workDays" value={data.workDays} onChange={handleInputChange} className="pr-8" placeholder="0" />
-                                    <span className="absolute right-3 top-8 text-gray-400 text-xs font-bold">ngày</span>
-                                </div>
-                                <div className="input-group relative">
-                                    <label className="text-red-600">Đi muộn</label>
-                                    <input type="number" name="lateMin" value={data.lateMin} onChange={handleInputChange} className="text-red-600 border-red-200 focus:border-red-500 pr-8" placeholder="0" />
-                                    <span className="absolute right-3 top-8 text-red-300 text-xs font-bold">phút</span>
-                                </div>
-                            </div>
+<!-- ══════════════════════════════
+  COLOUR
+══════════════════════════════ -->
+<section class="colour-section">
+  <div class="colour-header">
+    <div class="section-number">03 &nbsp;·&nbsp; Colour System</div>
+    <h2 style="font-family:'Cormorant Garamond',serif;font-size:36px;font-weight:300;color:var(--text)">
+      Từ <em style="font-style:italic;color:var(--jade)">rừng nguyên sinh</em> đến <em style="font-style:italic;color:#C8A84B">vàng tích hợp</em>
+    </h2>
+  </div>
+  <div class="swatches">
+    <div class="swatch">
+      <div class="swatch-blob" style="background:#0F7A40;box-shadow:0 4px 20px rgba(15,122,64,0.35)"></div>
+      <div class="swatch-role">Primary 1</div>
+      <div class="swatch-name">Forest</div>
+      <div class="swatch-hex">#0F7A40</div>
+      <div class="swatch-note">Gốc rễ, mệnh Mộc. Anchor tone của toàn bộ palette.</div>
+    </div>
+    <div class="swatch">
+      <div class="swatch-blob" style="background:#00974D;box-shadow:0 4px 20px rgba(0,151,77,0.35)"></div>
+      <div class="swatch-role">Primary 2</div>
+      <div class="swatch-name">Emerald</div>
+      <div class="swatch-hex">#00974D</div>
+      <div class="swatch-note">Tăng trưởng, ESG. Màu chủ đạo brand.</div>
+    </div>
+    <div class="swatch">
+      <div class="swatch-blob" style="background:#00D4A8;box-shadow:0 4px 20px rgba(0,212,168,0.3)"></div>
+      <div class="swatch-role">Primary 3</div>
+      <div class="swatch-name">Jade Teal</div>
+      <div class="swatch-hex">#00D4A8</div>
+      <div class="swatch-note">Chuyển đổi số. Điểm sáng gradient.</div>
+    </div>
+    <div class="swatch">
+      <div class="swatch-blob" style="background:#C8A84B;box-shadow:0 4px 20px rgba(200,168,75,0.35)"></div>
+      <div class="swatch-role">Accent</div>
+      <div class="swatch-name">Gold</div>
+      <div class="swatch-hex">#C8A84B</div>
+      <div class="swatch-note">Integration nodes. Giá trị, Kim trong Ngũ hành. Chỉ dùng sparingly.</div>
+    </div>
+    <div class="swatch">
+      <div class="swatch-blob" style="background:#04100A"></div>
+      <div class="swatch-role">Background</div>
+      <div class="swatch-name">Abyss</div>
+      <div class="swatch-hex">#04100A</div>
+      <div class="swatch-note">Background chính. Sâu và ấm hơn pure black.</div>
+    </div>
+    <div class="swatch">
+      <div class="swatch-blob" style="background:#DCE8DF"></div>
+      <div class="swatch-role">Text</div>
+      <div class="swatch-name">Mist</div>
+      <div class="swatch-hex">#DCE8DF</div>
+      <div class="swatch-note">Văn bản. Warm white với chút xanh lá — không lạnh.</div>
+    </div>
+  </div>
+</section>
 
-                            <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wide mb-3 text-orange-600 flex items-center gap-2">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-                                OT & Thưởng khác
-                            </h3>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-orange-50 p-4 rounded-lg border border-orange-100 mb-6">
-                                <div className="input-group">
-                                    <label>OT 18h-22h (x1.5)</label>
-                                    <input type="number" name="otHours15" value={data.otHours15} onChange={handleInputChange} placeholder="0" />
-                                </div>
-                                <div className="input-group">
-                                    <label>OT Đêm 22h-6h (x2.0)</label>
-                                    <input type="number" name="otHours20" value={data.otHours20} onChange={handleInputChange} placeholder="0" />
-                                </div>
-                                <div className="input-group">
-                                    <label>OT Ngày Nghỉ (x2.0)</label>
-                                    <input type="number" name="otDayOff" value={data.otDayOff} onChange={handleInputChange} placeholder="0" />
-                                </div>
-                                <div className="input-group">
-                                    <label>Thưởng Dự án (Nếu có)</label>
-                                    <input type="number" name="projBonus" value={data.projBonus} onChange={handleInputChange} placeholder="0" />
-                                </div>
-                            </div>
-                        </div>
+<!-- ══════════════════════════════
+  TYPOGRAPHY
+══════════════════════════════ -->
+<section class="type-section">
+  <div class="type-block">
+    <div class="type-label">Display · Slogan · Headlines</div>
+    <div class="type-display">Where Systems<br/>Meet. Where<br/><em>Value Grows.</em></div>
+    <div class="type-spec">
+      Cormorant Garamond · Light 300 · Italic<br/>
+      Dùng cho: slogan, headline lớn, quote, báo cáo ESG
+    </div>
+    <div class="type-rationale">
+      Cormorant là một serif có gốc từ typography truyền thống châu Âu nhưng rất duyên dáng trên màn hình hiện đại. Italic của nó gợi sự <strong>hữu cơ, bền lâu</strong> — đúng với positioning của một công ty công nghệ bền vững. Đây là phần "human" trong brand voice của CHC.
+    </div>
+  </div>
+  <div class="type-block">
+    <div class="type-label">UI · Wordmark · Body</div>
+    <div class="type-display-2">CHC<br/>Sustainable<br/>Technology</div>
+    <div class="type-spec">
+      Outfit · Bold 700 / Regular 400<br/>
+      Dùng cho: wordmark, UI labels, tagline, body text
+    </div>
+    <div class="type-rationale">
+      Outfit là sans-serif geometric với tỉ lệ rộng và letterform sạch — đọc tốt ở mọi kích cỡ từ favicon đến billboard. Weight 700 cho wordmark CHC tạo <strong>impact mạnh</strong>. Combo Cormorant + Outfit là cặp đôi "human & machine" — phản ánh đúng triết lý của CHC: công nghệ phục vụ con người, không phải ngược lại.
+    </div>
+  </div>
+</section>
 
-                        {/* RESULT SECTION */}
-                        <div className="lg:col-span-5">
-                            <div className="bg-white p-6 rounded-xl shadow-lg border border-indigo-100 sticky top-4">
-                                <div className="text-center mb-6">
-                                    <h2 className="text-xl font-bold text-gray-800">PHIẾU LƯƠNG</h2>
-                                    <p className="text-xs text-gray-400">Tạm tính</p>
-                                </div>
+<!-- ══════════════════════════════
+  APPLICATIONS
+══════════════════════════════ -->
+<section class="apps-section">
+  <div class="section-number">04 &nbsp;·&nbsp; Applications</div>
 
-                                <div className="space-y-1 text-sm">
-                                    {/* Income Group */}
-                                    <div className="mb-4">
-                                        <p className="text-xs font-bold text-gray-400 uppercase mb-2 border-b pb-1">1. Thu Nhập</p>
-                                        <div className="receipt-row">
-                                            <span className="receipt-label">Tỷ lệ công ({data.rate || 0}/{data.workDays || 0})</span>
-                                            <span className="receipt-value text-gray-500">{(parseFloat(data.workDays) ? ((parseFloat(data.rate)/parseFloat(data.workDays))*100).toFixed(0) : 0)}%</span>
-                                        </div>
-                                        <div className="receipt-row">
-                                            <span className="receipt-label">Lương cứng (thực tế)</span>
-                                            <span className="receipt-value">{formatCurrency(results.actualBaseSalary)}</span>
-                                        </div>
-                                        <div className="receipt-row">
-                                            <span className="receipt-label">Thưởng chất lượng</span>
-                                            <span className="receipt-value">{formatCurrency(results.actualQualityBonus)}</span>
-                                        </div>
-                                        <div className="receipt-row">
-                                            <span className="receipt-label">Phụ cấp ăn trưa</span>
-                                            <span className="receipt-value text-green-600">{formatCurrency(results.actualLunch)}</span>
-                                        </div>
-                                        
-                                        {/* OT Breakdown */}
-                                        <div className="bg-orange-50 rounded p-2 my-2 border border-orange-100">
-                                            <div className="flex justify-between items-center mb-1">
-                                                <span className="text-xs font-bold text-orange-800">Tổng Lương OT</span>
-                                                <span className="font-bold text-orange-600">{formatCurrency(results.totalOtSalary)}</span>
-                                            </div>
-                                            {(data.otHours15 > 0) && <div className="flex justify-between text-xs text-gray-500 mb-1">
-                                                <span>• x1.5 ({data.otHours15}h)</span>
-                                                <span>{formatCurrency(results.otSalary15)}</span>
-                                            </div>}
-                                            {(data.otHours20 > 0) && <div className="flex justify-between text-xs text-gray-500 mb-1">
-                                                <span>• x2.0 Đêm ({data.otHours20}h)</span>
-                                                <span>{formatCurrency(results.otSalary20)}</span>
-                                            </div>}
-                                            {(data.otDayOff > 0) && <div className="flex justify-between text-xs text-gray-500">
-                                                <span>• x2.0 Nghỉ ({data.otDayOff}h)</span>
-                                                <span>{formatCurrency(results.otSalaryDayOff)}</span>
-                                            </div>}
-                                        </div>
+  <div class="apps-grid">
 
-                                        {parseFloat(data.projBonus) > 0 && <div className="receipt-row">
-                                            <span className="receipt-label">Thưởng dự án</span>
-                                            <span className="receipt-value text-blue-600">{formatCurrency(data.projBonus)}</span>
-                                        </div>}
-                                    </div>
-                                    
-                                    {/* Tax Calc */}
-                                    <div className="mb-4 bg-gray-50 p-3 rounded border border-gray-200">
-                                        <p className="text-xs font-bold text-gray-400 uppercase mb-2">2. Tính Thuế TNCN {trialMode && "(10%)"}</p>
-                                        <div className="flex justify-between text-xs mb-1">
-                                            <span>Thu nhập chịu thuế:</span>
-                                            <span className="font-semibold">{formatCurrency(results.taxableIncome)}</span>
-                                        </div>
-                                        {!trialMode && <>
-                                            <div className="flex justify-between text-xs mb-1 text-gray-500">
-                                                <span>(Đã trừ ăn trưa: {formatCurrency(results.actualLunch)})</span>
-                                            </div>
-                                            <div className="flex justify-between text-xs mb-1 text-red-500">
-                                                <span>- Giảm trừ (BH+Bản thân):</span>
-                                                <span>{formatCurrency(results.taxDeductions)}</span>
-                                            </div>
-                                            <div className="border-t border-gray-300 my-1"></div>
-                                            <div className="flex justify-between font-bold text-gray-800">
-                                                <span>Thu nhập tính thuế:</span>
-                                                <span>{formatCurrency(results.taxAssessmentIncome)}</span>
-                                            </div>
-                                        </>}
-                                        <div className="flex justify-between text-red-600 font-bold mt-1">
-                                            <span>Thuế phải đóng:</span>
-                                            <span>{formatCurrency(results.tax)}</span>
-                                        </div>
-                                    </div>
+    <!-- Business Card -->
+    <div class="app-card">
+      <div class="app-preview" style="background:#050F08;min-height:220px">
+        <div style="
+          width:280px;height:158px;
+          background:linear-gradient(140deg,#071A10 0%,#0A1C14 100%);
+          border-radius:12px;
+          border:1px solid rgba(0,184,122,0.1);
+          padding:24px 28px;
+          display:flex;flex-direction:column;justify-content:space-between;
+          position:relative;overflow:hidden;
+          box-shadow:0 16px 48px rgba(0,0,0,0.5)">
+          <!-- corner accent -->
+          <div style="position:absolute;top:0;right:0;width:60px;height:60px;
+            background:radial-gradient(circle at top right,rgba(200,168,75,0.1),transparent 70%)"></div>
+          <svg width="64" height="34" viewBox="30 51 420 128">
+            <path d="M 66.4,41.3 A 90,90 0 1,1 66.4,188.7 L 83.6,164.1 A 60,60 0 1,0 83.6,65.9 Z" fill="url(#G_primary)"/>
+            <rect x="178" y="110" width="124" height="10" rx="5" fill="url(#G_primary)"/>
+            <path d="M 413.6,41.3 A 90,90 0 1,0 413.6,188.7 L 396.4,164.1 A 60,60 0 1,1 396.4,65.9 Z" fill="url(#G_primary)"/>
+            <circle cx="178" cy="115" r="11" fill="#C8A84B"/>
+            <circle cx="302" cy="115" r="11" fill="#C8A84B"/>
+          </svg>
+          <div>
+            <div style="font-size:10px;font-weight:600;color:#DCE8DF;margin-bottom:2px">Nguyễn Văn A</div>
+            <div style="font-size:9px;color:#3A7055;letter-spacing:1px">Solution Architect</div>
+            <div style="font-size:8px;color:#253D2C;margin-top:6px">a.nguyen@chc.vn · chc.vn</div>
+          </div>
+        </div>
+      </div>
+      <div class="app-meta">
+        <span class="app-name">Business Card</span>
+        <span class="app-use">85 × 55 mm</span>
+      </div>
+    </div>
 
-                                    {/* Deductions & Final */}
-                                    <div className="mb-4">
-                                        <p className="text-xs font-bold text-gray-400 uppercase mb-2 border-b pb-1">3. Khấu trừ</p>
-                                        <div className="receipt-row">
-                                            <span className="receipt-label">BHXH ({trialMode ? "0" : "10.5"}%)</span>
-                                            <span className="receipt-value text-red-500">-{formatCurrency(results.insuranceDeduction)}</span>
-                                        </div>
-                                        <div className="receipt-row">
-                                            <span className="receipt-label">Phạt đi muộn ({data.lateMin}p)</span>
-                                            <span className="receipt-value text-red-500">-{formatCurrency(results.latePenalty)}</span>
-                                        </div>
-                                        <div className="receipt-row">
-                                            <span className="receipt-label">Thuế TNCN</span>
-                                            <span className="receipt-value text-red-500">-{formatCurrency(results.tax)}</span>
-                                        </div>
-                                    </div>
+    <!-- Email signature -->
+    <div class="app-card">
+      <div class="app-preview" style="background:#F5F8F5;min-height:220px">
+        <div style="
+          background:#fff;border-radius:8px;
+          padding:20px 24px;width:280px;
+          border-left:3px solid #00974D;
+          box-shadow:0 4px 24px rgba(0,0,0,0.06)">
+          <div style="display:flex;align-items:center;gap:14px;margin-bottom:12px">
+            <svg width="40" height="22" viewBox="30 51 420 128">
+              <path d="M 66.4,41.3 A 90,90 0 1,1 66.4,188.7 L 83.6,164.1 A 60,60 0 1,0 83.6,65.9 Z" fill="url(#G_print)"/>
+              <rect x="178" y="110" width="124" height="10" rx="5" fill="url(#G_print)"/>
+              <path d="M 413.6,41.3 A 90,90 0 1,0 413.6,188.7 L 396.4,164.1 A 60,60 0 1,1 396.4,65.9 Z" fill="url(#G_print)"/>
+              <circle cx="178" cy="115" r="11" fill="#B8922A"/>
+              <circle cx="302" cy="115" r="11" fill="#B8922A"/>
+            </svg>
+            <div style="border-left:1px solid #D8EBE0;padding-left:14px">
+              <div style="font-size:11px;font-weight:700;color:#0A1A0F;font-family:'Outfit',sans-serif">Nguyễn Văn A</div>
+              <div style="font-size:9px;color:#2A6A42;margin-top:1px">Solution Architect · CHC</div>
+            </div>
+          </div>
+          <div style="font-size:8px;color:#6A8A72;line-height:1.6;border-top:1px solid #EAF2EC;padding-top:10px;font-family:sans-serif">
+            <em style="color:#2A6A42;font-style:italic;font-size:9px">Where Systems Meet. Where Value Grows.</em><br/>
+            chc.vn · +84 28 xxxx xxxx
+          </div>
+        </div>
+      </div>
+      <div class="app-meta">
+        <span class="app-name">Email Signature</span>
+        <span class="app-use">Light theme</span>
+      </div>
+    </div>
 
-                                    <div className="mt-6 pt-4 border-t-2 border-dashed border-gray-300">
-                                        <div className="flex justify-between items-end">
-                                            <span className="text-gray-500 font-bold text-sm uppercase">THỰC NHẬN (NET)</span>
-                                            <span className="text-3xl font-bold text-indigo-700">{formatCurrency(results.netIncome)}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            );
-        };
+    <!-- Website navbar -->
+    <div class="app-card">
+      <div class="app-preview" style="background:#04100A;min-height:220px;flex-direction:column;gap:16px">
+        <!-- Navbar mockup -->
+        <div style="
+          width:300px;background:#071510;
+          border-radius:10px;padding:14px 20px;
+          border:1px solid rgba(0,184,122,0.1);
+          display:flex;align-items:center;justify-content:space-between">
+          <div style="display:flex;align-items:center;gap:10px">
+            <svg width="36" height="20" viewBox="30 51 420 128">
+              <path d="M 66.4,41.3 A 90,90 0 1,1 66.4,188.7 L 83.6,164.1 A 60,60 0 1,0 83.6,65.9 Z" fill="url(#G_primary)"/>
+              <rect x="178" y="110" width="124" height="10" rx="5" fill="url(#G_primary)"/>
+              <path d="M 413.6,41.3 A 90,90 0 1,0 413.6,188.7 L 396.4,164.1 A 60,60 0 1,1 396.4,65.9 Z" fill="url(#G_primary)"/>
+              <circle cx="178" cy="115" r="11" fill="#C8A84B"/>
+              <circle cx="302" cy="115" r="11" fill="#C8A84B"/>
+            </svg>
+            <span style="font-family:'Outfit',sans-serif;font-size:13px;font-weight:700;
+              background:linear-gradient(90deg,#00B87A,#00D4A8);
+              -webkit-background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:2px">CHC</span>
+          </div>
+          <div style="display:flex;gap:16px">
+            <div style="width:24px;height:3px;background:rgba(0,184,122,0.3);border-radius:2px"></div>
+            <div style="width:24px;height:3px;background:rgba(0,184,122,0.15);border-radius:2px"></div>
+            <div style="width:24px;height:3px;background:rgba(0,184,122,0.15);border-radius:2px"></div>
+          </div>
+        </div>
+        <div style="font-size:9px;color:var(--muted);letter-spacing:1.5px">Website Navigation Bar</div>
+      </div>
+      <div class="app-meta">
+        <span class="app-name">Digital · Web</span>
+        <span class="app-use">Navbar lockup</span>
+      </div>
+    </div>
 
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
-    </script>
+  </div>
+</section>
+
 </body>
 </html>
